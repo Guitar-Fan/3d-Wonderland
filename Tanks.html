@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRON MAZE - Tank Combat Simulator</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; cursor: crosshair; }
+#gameCanvas { width: 100vw; height: 100vh; display: block; }
+
+/* HUD Overlay */
+#hud { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: none; }
+
+/* Cockpit Dashboard */
+#dashboard { position: fixed; bottom: 0; left: 0; width: 100%; height: 180px;
+    background: linear-gradient(to bottom, rgba(30,28,25,0.7), rgba(20,18,15,0.95));
+    border-top: 2px solid #5a4a30; z-index: 8; pointer-events: none; display: none;
+    font-family: 'Courier New', monospace; }
+#dashInner { display: flex; justify-content: space-between; align-items: stretch; height: 100%; padding: 8px 15px; }
+
+/* Mini-map radar */
+#miniMapContainer { width: 160px; height: 160px; border: 2px solid #4a6a30; border-radius: 4px;
+    background: rgba(10,20,10,0.9); position: relative; overflow: hidden; }
+#miniMapCanvas { width: 100%; height: 100%; }
+#miniMapLabel { position: absolute; top: 2px; left: 5px; color: #6a8a40; font-size: 9px; letter-spacing: 2px; }
+
+/* Center info panel */
+#centerPanel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; }
+#shellCount { color: #ff8844; font-size: 22px; text-shadow: 0 0 8px #ff8844; }
+#mineCount { color: #ffcc44; font-size: 18px; text-shadow: 0 0 8px #ffcc44; }
+#hullBar { width: 200px; height: 10px; border: 1px solid #5a8a30; margin: 6px 0; background: #1a1a10; border-radius: 3px; overflow: hidden; }
+#hullFill { width: 100%; height: 100%; background: linear-gradient(90deg, #ff4444, #44ff44); transition: width 0.3s; }
+#hullText { color: #6a8a40; font-size: 10px; letter-spacing: 2px; }
+
+/* Speed / heading gauges */
+#gaugesPanel { width: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.gauge { text-align: center; margin: 4px 0; }
+.gauge-value { font-size: 24px; color: #6aaa40; text-shadow: 0 0 10px #4a8a30; font-weight: bold; }
+.gauge-label { font-size: 9px; color: #4a7a3088; text-transform: uppercase; letter-spacing: 2px; }
+
+/* Crosshair */
+#crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; }
+#crosshair svg { width: 100%; height: 100%; }
+
+/* Aim scope overlay */
+#aimScope { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 300px; height: 300px; border-radius: 50%; border: 2px solid rgba(100,180,60,0.3);
+    background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.4) 100%); display: none; }
+
+/* Mission info */
+#missionInfo { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); text-align: center; }
+#missionText { color: #6aaa40; font-size: 14px; text-shadow: 0 0 8px #4a8a30; }
+#missionSub { color: #4a7a3088; font-size: 11px; margin-top: 3px; }
+
+/* Warning */
+#warningText { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 42px; color: #ff0000; text-shadow: 0 0 30px #ff0000; display: none;
+    animation: blink 0.5s infinite; }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Damage overlay */
+#damageOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 5; border: 0px solid rgba(255,0,0,0); transition: border-width 0.3s; }
+
+/* Notification */
+#notification { position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+    color: #6aaa40; font-size: 22px; text-shadow: 0 0 15px #4a8a30; z-index: 20;
+    opacity: 0; transition: opacity 0.5s; text-align: center; pointer-events: none; }
+#killFeed { position: fixed; top: 130px; right: 25px; z-index: 20; pointer-events: none; }
+.kill-entry { color: #ff8800; font-size: 13px; text-shadow: 0 0 8px #ff8800; opacity: 1; transition: opacity 1s; margin: 3px 0; }
+
+/* Controls help */
+#controlsHelp { position: fixed; top: 15px; left: 15px; color: #4a7a3066; font-size: 10px;
+    z-index: 15; pointer-events: none; line-height: 1.8; display: none; }
+
+/* Camera mode indicator */
+#cameraMode { position: fixed; top: 15px; right: 15px; color: #4a7a3088; font-size: 10px;
+    z-index: 15; pointer-events: none; text-align: right; display: none; }
+
+/* Menu Screen */
+#menuScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, #1a1508 0%, #2a2010 30%, #1a1508 60%, #0a0a05 100%);
+    z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#menuScreen h1 { font-size: 64px; color: #6aaa40; text-shadow: 0 0 30px #4a8a30, 0 0 60px #3a6a20;
+    margin-bottom: 8px; letter-spacing: 12px; }
+#menuScreen h2 { font-size: 14px; color: #4a7a3077; letter-spacing: 6px; margin-bottom: 50px; }
+.menu-btn { background: transparent; border: 2px solid #6aaa40; color: #6aaa40;
+    padding: 14px 45px; font-size: 16px; font-family: 'Courier New', monospace;
+    cursor: pointer; pointer-events: all; margin: 7px; letter-spacing: 3px;
+    transition: all 0.3s; text-transform: uppercase; }
+.menu-btn:hover { background: #6aaa4033; box-shadow: 0 0 25px #4a8a3044; transform: scale(1.05); }
+#missionSelect { display: none; margin-top: 15px; }
+.mission-card { background: rgba(106,170,64,0.05); border: 1px solid #4a7a3044; padding: 18px 35px;
+    margin: 8px; cursor: pointer; pointer-events: all; transition: all 0.3s; }
+.mission-card:hover { background: rgba(106,170,64,0.15); border-color: #6aaa40; }
+.mission-card h3 { color: #6aaa40; font-size: 16px; margin-bottom: 4px; }
+.mission-card p { color: #4a7a3088; font-size: 11px; }
+
+/* Game Over / Victory */
+#endScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 100; display: none;
+    flex-direction: column; align-items: center; justify-content: center; }
+#endScreen h1 { font-size: 56px; letter-spacing: 10px; margin-bottom: 20px; }
+#endScreen p { color: #aaa; font-size: 14px; margin: 5px; }
+#endScreen .menu-btn { margin-top: 30px; }
+
+/* Pause Menu */
+#pauseMenu { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8); z-index: 100; display: none;
+    flex-direction: column; align-items: center; justify-content: center; }
+#pauseMenu h1 { font-size: 48px; color: #6aaa40; letter-spacing: 8px; margin-bottom: 30px;
+    text-shadow: 0 0 20px #4a8a30; }
+
+/* Mission Briefing */
+#briefingScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, rgba(20,25,15,0.95), rgba(30,35,20,0.95));
+    z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
+#briefingScreen h1 { font-size: 42px; color: #6aaa40; letter-spacing: 6px; margin-bottom: 10px; }
+#briefingScreen h2 { font-size: 18px; color: #4a7a30; letter-spacing: 3px; margin-bottom: 30px; }
+#briefingContent { max-width: 600px; background: rgba(0,0,0,0.3); padding: 30px;
+    border: 2px solid #4a7a30; margin: 20px; }
+#briefingContent p { color: #8aaa60; font-size: 14px; line-height: 1.8; margin: 10px 0; }
+#briefingContent .objective { color: #6aaa40; font-size: 16px; font-weight: bold; margin: 15px 0 5px 0; }
+#briefingContent .detail { color: #7a9a50; font-size: 13px; margin-left: 20px; }
+
+/* Distance Meter */
+#distanceMeter { position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+    color: #ff8844; font-size: 12px; text-shadow: 0 0 8px #ff8844; }
+</style>
+</head>
+<body>
+
+<!-- Menu Screen -->
+<div id="menuScreen">
+    <h1>IRON MAZE</h1>
+    <h2>Tank Combat Simulator</h2>
+    <button class="menu-btn" onclick="showMissions()">START MISSION</button>
+    <div id="missionSelect">
+        <div class="mission-card" onclick="startMission(1)">
+            <h3>MISSION 1: SCOUTING</h3>
+            <p>Destroy 3 brown enemy tanks in the training yard</p>
+        </div>
+        <div class="mission-card" onclick="startMission(2)">
+            <h3>MISSION 2: COUNTERATTACK</h3>
+            <p>Eliminate 5 enemy tanks including fast-moving grey scouts</p>
+        </div>
+        <div class="mission-card" onclick="startMission(3)">
+            <h3>MISSION 3: FORTRESS</h3>
+            <p>Destroy 6 tanks with armored green defenders holding positions</p>
+        </div>
+        <div class="mission-card" onclick="startMission(4)">
+            <h3>MISSION 4: TOTAL WAR</h3>
+            <p>Survive and destroy 8 mixed enemy tanks in the full maze</p>
+        </div>
+    </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+    <div id="crosshair">
+        <svg viewBox="0 0 60 60">
+            <circle cx="30" cy="30" r="22" stroke="#6aaa40" stroke-width="1" fill="none" opacity="0.5"/>
+            <circle cx="30" cy="30" r="2" fill="#6aaa40" opacity="0.8"/>
+            <line x1="30" y1="4" x2="30" y2="14" stroke="#6aaa40" stroke-width="1.5" opacity="0.6"/>
+            <line x1="30" y1="46" x2="30" y2="56" stroke="#6aaa40" stroke-width="1.5" opacity="0.6"/>
+            <line x1="4" y1="30" x2="14" y2="30" stroke="#6aaa40" stroke-width="1.5" opacity="0.6"/>
+            <line x1="46" y1="30" x2="56" y2="30" stroke="#6aaa40" stroke-width="1.5" opacity="0.6"/>
+        </svg>
+    </div>
+    <div id="aimScope"></div>
+    <div id="missionInfo">
+        <div id="missionText"></div>
+        <div id="missionSub"></div>
+    </div>
+    <div id="warningText">WARNING</div>
+    <div id="notification"></div>
+    <div id="killFeed"></div>
+    <div id="distanceMeter"></div>
+    <div id="controlsHelp">
+        WASD - Move | Mouse - Aim Turret<br>
+        CLICK - Fire Shell | E - Lay Mine<br>
+        SPACE - Detonate Mines | R - Reload<br>
+        V - Camera View | ESC - Pause
+    </div>
+    <div id="cameraMode">CAMERA: FIRST-PERSON</div>
+</div>
+<div id="damageOverlay"></div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+    <div id="dashInner">
+        <div id="miniMapContainer">
+            <canvas id="miniMapCanvas" width="160" height="160"></canvas>
+            <div id="miniMapLabel">MAP</div>
+        </div>
+        <div id="centerPanel">
+            <div id="shellCount">SHELLS: 5 / 5</div>
+            <div id="mineCount">MINES: 2 / 2</div>
+            <div id="hullBar"><div id="hullFill"></div></div>
+            <div id="hullText">HULL INTEGRITY 100%</div>
+        </div>
+        <div id="gaugesPanel">
+            <div class="gauge">
+                <div class="gauge-value" id="speedVal">0</div>
+                <div class="gauge-label">SPEED</div>
+            </div>
+            <div class="gauge">
+                <div class="gauge-value" id="headingVal">N</div>
+                <div class="gauge-label">HEADING</div>
+            </div>
+            <div class="gauge">
+                <div class="gauge-value" id="killsVal">0</div>
+                <div class="gauge-label">KILLS</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- End screen -->
+<div id="endScreen">
+    <h1 id="endTitle">MISSION COMPLETE</h1>
+    <p id="endStats"></p>
+    <button class="menu-btn" onclick="restartMission()">RESTART MISSION</button>
+    <button class="menu-btn" onclick="backToMenu()">RETURN TO BASE</button>
+</div>
+
+<!-- Pause Menu -->
+<div id="pauseMenu">
+    <h1>PAUSED</h1>
+    <button class="menu-btn" onclick="resumeGame()">RESUME</button>
+    <button class="menu-btn" onclick="restartMission()">RESTART MISSION</button>
+    <button class="menu-btn" onclick="backToMenu()">RETURN TO BASE</button>
+</div>
+
+<!-- Mission Briefing -->
+<div id="briefingScreen">
+    <h1 id="briefingTitle">MISSION 1</h1>
+    <h2 id="briefingSubtitle">SCOUTING</h2>
+    <div id="briefingContent">
+        <p class="objective">OBJECTIVE:</p>
+        <p id="briefingObjective">Destroy all enemy tanks in the training yard</p>
+        <p class="objective">ENEMY FORCES:</p>
+        <p id="briefingEnemies" class="detail">3 Brown Tanks (Light Armor)</p>
+        <p class="objective">INTELLIGENCE:</p>
+        <p id="briefingIntel" class="detail">Entry-level opposition. Use this mission to familiarize yourself with controls and weapons systems.</p>
+    </div>
+    <button class="menu-btn" onclick="startMissionFromBriefing()">BEGIN MISSION</button>
+    <button class="menu-btn" onclick="cancelBriefing()">ABORT</button>
+</div>
+
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+<script>
+// ======================= SYNTHESIZED SOUNDS =======================
+function createSynthesizedSounds() {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Helper to create audio buffer from synthesis
+    function createBuffer(duration, fn) {
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, sampleRate * duration, sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+            data[i] = fn(i, sampleRate);
+        }
+        return buffer;
+    }
+    
+    // Helper to convert buffer to base64 WAV
+    function bufferToBase64(buffer) {
+        const wav = audioBufferToWav(buffer);
+        const blob = new Blob([wav], { type: 'audio/wav' });
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    }
+    
+    // Simple WAV encoder
+    function audioBufferToWav(buffer) {
+        const numOfChan = buffer.numberOfChannels;
+        const length = buffer.length * numOfChan * 2;
+        const arrayBuffer = new ArrayBuffer(44 + length);
+        const view = new DataView(arrayBuffer);
+        const channels = [];
+        let offset = 0;
+        let pos = 0;
+        
+        // Write WAV header
+        setUint32(0x46464952); // "RIFF"
+        setUint32(length + 36);
+        setUint32(0x45564157); // "WAVE"
+        setUint32(0x20746d66); // "fmt "
+        setUint32(16);
+        setUint16(1);
+        setUint16(numOfChan);
+        setUint32(buffer.sampleRate);
+        setUint32(buffer.sampleRate * 2 * numOfChan);
+        setUint16(numOfChan * 2);
+        setUint16(16);
+        setUint32(0x61746164); // "data"
+        setUint32(length);
+        
+        for (let i = 0; i < buffer.numberOfChannels; i++)
+            channels.push(buffer.getChannelData(i));
+        
+        while (pos < buffer.length) {
+            for (let i = 0; i < numOfChan; i++) {
+                let sample = Math.max(-1, Math.min(1, channels[i][pos]));
+                sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                view.setInt16(44 + offset, sample, true);
+                offset += 2;
+            }
+            pos++;
+        }
+        
+        function setUint16(data) {
+            view.setUint16(pos, data, true);
+            pos += 2;
+        }
+        
+        function setUint32(data) {
+            view.setUint32(pos, data, true);
+            pos += 4;
+        }
+        
+        return arrayBuffer;
+    }
+    
+    return {
+        // Shell fire - sharp crack
+        fire: () => {
+            const sound = new Howl({
+                src: ['data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='],
+                volume: 0.3,
+                rate: 1.0
+            });
+            
+            // Generate fire sound on-the-fly
+            const buffer = createBuffer(0.15, (i, sr) => {
+                const t = i / sr;
+                const decay = Math.exp(-t * 30);
+                const noise = (Math.random() * 2 - 1) * 0.3;
+                const tone = Math.sin(2 * Math.PI * 200 * t * (1 - t * 5)) * 0.7;
+                return (noise + tone) * decay;
+            });
+            
+            bufferToBase64(buffer).then(base64 => {
+                const s = new Howl({ src: [base64], volume: 0.4 });
+                s.play();
+            });
+        },
+        
+        // Explosion - rumble and crack
+        explosion: () => {
+            const buffer = createBuffer(0.8, (i, sr) => {
+                const t = i / sr;
+                const decay = Math.exp(-t * 4);
+                const noise = (Math.random() * 2 - 1) * 0.8;
+                const rumble = Math.sin(2 * Math.PI * 60 * t) * 0.4;
+                const crack = Math.sin(2 * Math.PI * 150 * t * Math.exp(-t * 10)) * 0.6;
+                return (noise + rumble + crack) * decay;
+            });
+            
+            bufferToBase64(buffer).then(base64 => {
+                const s = new Howl({ src: [base64], volume: 0.5 });
+                s.play();
+            });
+        },
+        
+        // Hit - metallic clang
+        hit: () => {
+            const buffer = createBuffer(0.3, (i, sr) => {
+                const t = i / sr;
+                const decay = Math.exp(-t * 15);
+                const clang = Math.sin(2 * Math.PI * 800 * t) * 0.4 +
+                             Math.sin(2 * Math.PI * 1200 * t) * 0.3 +
+                             Math.sin(2 * Math.PI * 400 * t) * 0.2;
+                const noise = (Math.random() * 2 - 1) * 0.2;
+                return (clang + noise) * decay;
+            });
+            
+            bufferToBase64(buffer).then(base64 => {
+                const s = new Howl({ src: [base64], volume: 0.35 });
+                s.play();
+            });
+        },
+        
+        // Victory - ascending chime
+        victory: () => {
+            const buffer = createBuffer(1.5, (i, sr) => {
+                const t = i / sr;
+                const decay = Math.exp(-t * 2);
+                const notes = [523, 659, 784, 1047]; // C, E, G, C
+                let sound = 0;
+                notes.forEach((freq, idx) => {
+                    const start = idx * 0.25;
+                    if (t >= start) {
+                        const nt = t - start;
+                        sound += Math.sin(2 * Math.PI * freq * nt) * Math.exp(-nt * 3) * 0.25;
+                    }
+                });
+                return sound * decay;
+            });
+            
+            bufferToBase64(buffer).then(base64 => {
+                const s = new Howl({ src: [base64], volume: 0.4 });
+                s.play();
+            });
+        },
+        
+        // Defeat - descending tone
+        defeat: () => {
+            const buffer = createBuffer(1.2, (i, sr) => {
+                const t = i / sr;
+                const freq = 400 * Math.exp(-t * 1.5);
+                const decay = Math.exp(-t * 2);
+                const tone = Math.sin(2 * Math.PI * freq * t);
+                return tone * decay * 0.6;
+            });
+            
+            bufferToBase64(buffer).then(base64 => {
+                const s = new Howl({ src: [base64], volume: 0.4 });
+                s.play();
+            });
+        },
+        
+        // Engine - looping rumble (managed separately)
+        createEngine: () => {
+            const buffer = createBuffer(1, (i, sr) => {
+                const t = i / sr;
+                const rumble1 = Math.sin(2 * Math.PI * 80 * t) * 0.3;
+                const rumble2 = Math.sin(2 * Math.PI * 120 * t) * 0.2;
+                const noise = (Math.random() * 2 - 1) * 0.1;
+                return rumble1 + rumble2 + noise;
+            });
+            
+            return bufferToBase64(buffer).then(base64 => {
+                return new Howl({
+                    src: [base64],
+                    loop: true,
+                    volume: 0
+                });
+            });
+        },
+        
+        // Ricochet - metallic ping
+        ricochet: () => {
+            const buffer = createBuffer(0.3, (i, sr) => {
+                const t = i / sr;
+                const decay = Math.exp(-t * 20);
+                const ping = Math.sin(2 * Math.PI * 1500 * t * (1 + t * 2)) * 0.5 +
+                            Math.sin(2 * Math.PI * 2200 * t * (1 + t * 3)) * 0.3;
+                const noise = (Math.random() * 2 - 1) * 0.15;
+                return (ping + noise) * decay;
+            });
+            
+            bufferToBase64(buffer).then(base64 => {
+                const s = new Howl({ src: [base64], volume: 0.25 });
+                s.play();
+            });
+        },
+        
+        // Mine deploy - mechanical click
+        mineDeploy: () => {
+            const buffer = createBuffer(0.25, (i, sr) => {
+                const t = i / sr;
+                const decay = Math.exp(-t * 25);
+                const click1 = Math.sin(2 * Math.PI * 300 * t) * 0.4;
+                const click2 = Math.sin(2 * Math.PI * 150 * t) * 0.3;
+                const noise = (Math.random() * 2 - 1) * 0.2;
+                return (click1 + click2 + noise) * decay;
+            });
+            
+            bufferToBase64(buffer).then(base64 => {
+                const s = new Howl({ src: [base64], volume: 0.3 });
+                s.play();
+            });
+        }
+    };
+}
+
+let SOUNDS = null;
+let engineSound = null;
+
+// Initialize sounds after user interaction
+function initSounds() {
+    if (!SOUNDS) {
+        SOUNDS = createSynthesizedSounds();
+        // Create engine sound
+        SOUNDS.createEngine().then(sound => {
+            engineSound = sound;
+        });
+    }
+}
+
+// ======================= GAME STATE =======================
+const G = {
+    scene: null, camera: null, renderer: null, clock: null,
+    // Player tank
+    playerTank: null, playerBody: null, playerTurret: null, playerBarrel: null,
+    playerPos: new THREE.Vector3(0, 0, 0),
+    playerAngle: 0, turretAngle: 0, barrelPitch: 0,
+    playerSpeed: 0, maxSpeed: 12, turnSpeed: 2.0,
+    hull: 100,
+    shells: 5, maxShells: 5, shellReloadTime: 0,
+    mines: 2, maxMines: 2,
+    // Projectiles & mines
+    activeShells: [], activeMines: [], activeEnemyShells: [],
+    maxBounces: 1, // shell bounces off wall once, destroyed on 2nd hit
+    mineTimer: 8, // seconds until auto-detonate
+    // Enemies
+    enemies: [],
+    // Environment
+    walls: [], wallMeshes: [],
+    floorSize: 80,
+    // Explosions & particles
+    explosions: [], particles: [],
+    // Mission
+    currentMission: 0, missionKills: 0, missionTargets: 0,
+    missionActive: false, missionComplete: false, missionFailed: false,
+    paused: false, pendingMission: 0,
+    // Input
+    keys: {}, mouse: { x: 0, y: 0, clicking: false },
+    pointerLocked: false,
+    // Camera
+    cameraMode: 0, // 0=first-person, 1=third-person, 2=top-down
+    camHeight: 4.5, camDist: 0,
+    // Timing
+    time: 0, started: false,
+    // Minimap
+    miniMapCtx: null,
+    // Cooldowns
+    shellCooldown: 0, mineCooldown: 0,
+    // Lights
+    sunLight: null, ambientLight: null,
+    // Sound system
+    soundsReady: false
+};
+
+// ======================= MAZE LAYOUTS =======================
+const MAZES = [
+    // Mission 1: Simple training yard
+    { walls: [
+        {x:0,z:-30,w:60,d:2},{x:0,z:30,w:60,d:2},{x:-30,z:0,w:2,d:60},{x:30,z:0,w:2,d:60},
+        {x:-10,z:-10,w:12,d:2},{x:10,z:10,w:12,d:2},{x:0,z:0,w:2,d:14},
+        {x:-15,z:15,w:8,d:2},{x:15,z:-15,w:8,d:2}
+    ], spawn: {x:0,z:25}, enemies: [
+        {x:-15,z:-15,type:'brown'},{x:15,z:5,type:'brown'},{x:-5,z:-20,type:'brown'}
+    ]},
+    // Mission 2: More complex with scouts
+    { walls: [
+        {x:0,z:-35,w:70,d:2},{x:0,z:35,w:70,d:2},{x:-35,z:0,w:2,d:70},{x:35,z:0,w:2,d:70},
+        {x:-15,z:-15,w:14,d:2},{x:15,z:15,w:14,d:2},{x:0,z:0,w:2,d:20},
+        {x:-20,z:10,w:2,d:14},{x:20,z:-10,w:2,d:14},
+        {x:-8,z:20,w:10,d:2},{x:8,z:-20,w:10,d:2},
+        {x:0,z:-8,w:8,d:2},{x:25,z:25,w:8,d:2}
+    ], spawn: {x:0,z:30}, enemies: [
+        {x:-20,z:-20,type:'brown'},{x:20,z:-20,type:'brown'},{x:-25,z:15,type:'grey'},
+        {x:25,z:0,type:'grey'},{x:0,z:-25,type:'brown'}
+    ]},
+    // Mission 3: Fortress with armored
+    { walls: [
+        {x:0,z:-38,w:76,d:2},{x:0,z:38,w:76,d:2},{x:-38,z:0,w:2,d:76},{x:38,z:0,w:2,d:76},
+        {x:0,z:0,w:16,d:2},{x:0,z:0,w:2,d:16},{x:-18,z:-18,w:12,d:2},{x:18,z:18,w:12,d:2},
+        {x:-18,z:18,w:2,d:12},{x:18,z:-18,w:2,d:12},{x:-10,z:25,w:8,d:2},{x:10,z:-25,w:8,d:2},
+        {x:-28,z:-8,w:2,d:16},{x:28,z:8,w:2,d:16},{x:-28,z:15,w:10,d:2},{x:28,z:-15,w:10,d:2}
+    ], spawn: {x:0,z:33}, enemies: [
+        {x:-15,z:-15,type:'brown'},{x:15,z:-15,type:'brown'},{x:0,z:-30,type:'green'},
+        {x:-30,z:0,type:'green'},{x:30,z:30,type:'grey'},{x:-25,z:25,type:'green'}
+    ]},
+    // Mission 4: Full maze - total war
+    { walls: [
+        {x:0,z:-40,w:80,d:2},{x:0,z:40,w:80,d:2},{x:-40,z:0,w:2,d:80},{x:40,z:0,w:2,d:80},
+        {x:-20,z:-20,w:14,d:2},{x:20,z:20,w:14,d:2},{x:0,z:0,w:2,d:22},
+        {x:-20,z:10,w:2,d:18},{x:20,z:-10,w:2,d:18},{x:-10,z:25,w:12,d:2},
+        {x:10,z:-25,w:12,d:2},{x:-30,z:-10,w:10,d:2},{x:30,z:10,w:10,d:2},
+        {x:0,z:-12,w:10,d:2},{x:0,z:12,w:10,d:2},{x:-30,z:25,w:2,d:12},
+        {x:30,z:-25,w:2,d:12},{x:-12,z:-30,w:2,d:10},{x:12,z:30,w:2,d:10}
+    ], spawn: {x:0,z:35}, enemies: [
+        {x:-20,z:-25,type:'brown'},{x:20,z:-25,type:'brown'},{x:-30,z:0,type:'grey'},
+        {x:30,z:0,type:'grey'},{x:0,z:-35,type:'green'},{x:-35,z:30,type:'green'},
+        {x:25,z:25,type:'brown'},{x:-10,z:-10,type:'green'}
+    ]}
+];
+
+// ======================= TANK TYPES =======================
+const TANK_TYPES = {
+    brown: { color: 0x8B5E3C, speed: 3, turnSpeed: 1.0, fireRate: 3.0, health: 1, shellSpeed: 20, ai: 'patrol' },
+    grey:  { color: 0x888888, speed: 7, turnSpeed: 1.8, fireRate: 2.0, health: 1, shellSpeed: 25, ai: 'chase' },
+    green: { color: 0x3a6a2a, speed: 2, turnSpeed: 0.8, fireRate: 4.0, health: 3, shellSpeed: 18, ai: 'guard' }
+};
+
+// ======================= INITIALIZATION =======================
+function init() {
+    G.clock = new THREE.Clock();
+    G.scene = new THREE.Scene();
+    G.scene.background = new THREE.Color(0xd4c4a0);
+    G.scene.fog = new THREE.Fog(0xd4c4a0, 60, 120);
+
+    // Renderer
+    G.renderer = new THREE.WebGLRenderer({ antialias: true });
+    G.renderer.setSize(window.innerWidth, window.innerHeight);
+    G.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    G.renderer.shadowMap.enabled = true;
+    G.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    G.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    G.renderer.toneMappingExposure = 1.1;
+    document.body.prepend(G.renderer.domElement);
+    G.renderer.domElement.id = 'gameCanvas';
+
+    // Camera - first person inside tank
+    G.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
+
+    // Lighting
+    G.ambientLight = new THREE.AmbientLight(0xffeedd, 0.6);
+    G.scene.add(G.ambientLight);
+
+    G.sunLight = new THREE.DirectionalLight(0xfff5e0, 1.5);
+    G.sunLight.position.set(40, 60, 30);
+    G.sunLight.castShadow = true;
+    G.sunLight.shadow.mapSize.width = 2048;
+    G.sunLight.shadow.mapSize.height = 2048;
+    G.sunLight.shadow.camera.near = 1;
+    G.sunLight.shadow.camera.far = 150;
+    G.sunLight.shadow.camera.left = -60;
+    G.sunLight.shadow.camera.right = 60;
+    G.sunLight.shadow.camera.top = 60;
+    G.sunLight.shadow.camera.bottom = -60;
+    G.scene.add(G.sunLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xffeebb, 0x806040, 0.4);
+    G.scene.add(hemiLight);
+
+    // Minimap
+    G.miniMapCtx = document.getElementById('miniMapCanvas').getContext('2d');
+
+    // Input
+    setupInput();
+    window.addEventListener('resize', onResize);
+
+    animate();
+}
+
+// ======================= INPUT =======================
+function setupInput() {
+    document.addEventListener('keydown', e => {
+        G.keys[e.key.toLowerCase()] = true;
+        if (e.key === 'Tab') e.preventDefault();
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            if (G.missionActive && !G.paused) pauseGame();
+            else if (G.paused) resumeGame();
+        }
+        if (e.key === ' ' && G.missionActive && !G.paused) { e.preventDefault(); detonateAllMines(); }
+        if (e.key.toLowerCase() === 'e' && G.missionActive && !G.paused) layMine();
+        if (e.key.toLowerCase() === 'r' && G.missionActive && !G.paused) reloadShells();
+        if (e.key.toLowerCase() === 'v' && G.missionActive && !G.paused) {
+            G.cameraMode = (G.cameraMode + 1) % 3;
+            const modes = ['FIRST-PERSON', 'THIRD-PERSON', 'TOP-DOWN'];
+            showNotification('CAMERA: ' + modes[G.cameraMode]);
+        }
+    });
+    document.addEventListener('keyup', e => { G.keys[e.key.toLowerCase()] = false; });
+
+    document.addEventListener('mousemove', e => {
+        if (G.pointerLocked) {
+            G.mouse.x += e.movementX * 0.003;
+            G.mouse.y += e.movementY * 0.003;
+            G.mouse.y = Math.max(-0.3, Math.min(0.15, G.mouse.y));
+        }
+    });
+
+    document.addEventListener('mousedown', e => {
+        // Initialize sounds on first interaction
+        if (!G.soundsReady) {
+            initSounds();
+            G.soundsReady = true;
+        }
+        
+        if (!G.pointerLocked && G.started && !G.paused) {
+            G.renderer.domElement.requestPointerLock();
+            return;
+        }
+        if (e.button === 0 && G.missionActive && !G.paused) fireShell();
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+        G.pointerLocked = document.pointerLockElement === G.renderer.domElement;
+    });
+}
+
+function onResize() {
+    G.camera.aspect = window.innerWidth / window.innerHeight;
+    G.camera.updateProjectionMatrix();
+    G.renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ======================= MENU =======================
+function showMissions() {
+    document.getElementById('missionSelect').style.display = 'block';
+}
+
+function startMission(num) {
+    G.pendingMission = num;
+    showBriefing(num);
+}
+
+function startMissionFromBriefing() {
+    const num = G.pendingMission;
+    document.getElementById('briefingScreen').style.display = 'none';
+    
+    G.currentMission = num;
+    G.missionKills = 0;
+    G.missionActive = true;
+    G.missionComplete = false;
+    G.missionFailed = false;
+    G.paused = false;
+    G.started = true;
+    G.hull = 100;
+    G.shells = G.maxShells;
+    G.mines = G.maxMines;
+    G.shellCooldown = 0;
+    G.mineCooldown = 0;
+    G.shellReloadTime = 0;
+    G.activeShells = [];
+    G.activeMines = [];
+    G.activeEnemyShells = [];
+    G.explosions = [];
+    G.particles = [];
+    G.enemies = [];
+    G.mouse.x = 0;
+    G.mouse.y = 0;
+
+    // Clean scene of old objects
+    clearScene();
+
+    // Build environment
+    createFloor();
+    createWalls(num - 1);
+    createPlayerTank();
+    spawnEnemies(num - 1);
+
+    const maze = MAZES[num - 1];
+    G.playerPos.set(maze.spawn.x, 0, maze.spawn.z);
+    G.playerAngle = Math.PI;
+    G.turretAngle = Math.PI;
+    G.playerSpeed = 0;
+
+    G.missionTargets = maze.enemies.length;
+
+    // Show HUD
+    document.getElementById('menuScreen').style.display = 'none';
+    document.getElementById('endScreen').style.display = 'none';
+    document.getElementById('hud').style.display = 'block';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('controlsHelp').style.display = 'block';
+    document.getElementById('cameraMode').style.display = 'block';
+    G.cameraMode = 0;
+
+    updateMissionText();
+    showNotification('MISSION ' + num + ' - START!');
+
+    // Lock pointer
+    G.renderer.domElement.requestPointerLock();
+}
+
+function backToMenu() {
+    G.missionActive = false;
+    G.started = false;
+    G.paused = false;
+    document.getElementById('menuScreen').style.display = 'flex';
+    document.getElementById('endScreen').style.display = 'none';
+    document.getElementById('pauseMenu').style.display = 'none';
+    document.getElementById('hud').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('controlsHelp').style.display = 'none';
+    document.getElementById('cameraMode').style.display = 'none';
+    document.getElementById('missionSelect').style.display = 'none';
+    if (document.pointerLockElement) document.exitPointerLock();
+    // Stop engine sound
+    if (engineSound && engineSound.playing()) engineSound.pause();
+}
+
+function pauseGame() {
+    G.paused = true;
+    G.missionActive = false;
+    document.getElementById('pauseMenu').style.display = 'flex';
+    if (document.pointerLockElement) document.exitPointerLock();
+    // Stop engine sound
+    if (engineSound && engineSound.playing()) engineSound.pause();
+}
+
+function resumeGame() {
+    G.paused = false;
+    G.missionActive = true;
+    document.getElementById('pauseMenu').style.display = 'none';
+    G.renderer.domElement.requestPointerLock();
+}
+
+function restartMission() {
+    document.getElementById('endScreen').style.display = 'none';
+    document.getElementById('pauseMenu').style.display = 'none';
+    startMission(G.currentMission);
+}
+
+function cancelBriefing() {
+    document.getElementById('briefingScreen').style.display = 'none';
+    document.getElementById('menuScreen').style.display = 'flex';
+}
+
+function showBriefing(num) {
+    const briefings = [
+        {
+            title: 'MISSION 1: SCOUTING',
+            subtitle: 'Training Yard',
+            objective: 'Destroy all enemy tanks in the training yard',
+            enemies: '3 Brown Tanks (Light Armor, Patrol AI)',
+            intel: 'Entry-level opposition. Use this mission to familiarize yourself with controls and weapons systems. Brown tanks have basic patrol patterns and slow reaction times.'
+        },
+        {
+            title: 'MISSION 2: COUNTERATTACK',
+            subtitle: 'Urban Maze',
+            objective: 'Eliminate all hostile forces in the urban sector',
+            enemies: '3 Brown Tanks, 2 Grey Scout Tanks (Fast, Chase AI)',
+            intel: 'Expect mixed resistance. Grey scout tanks are faster and more aggressive - they will pursue you relentlessly. Use the maze walls for cover and tactical positioning.'
+        },
+        {
+            title: 'MISSION 3: FORTRESS',
+            subtitle: 'Enemy Stronghold',
+            objective: 'Breach enemy defenses and destroy all defenders',
+            enemies: '2 Brown Tanks, 2 Grey Scouts, 2 Green Heavy Tanks (Armored, Guard AI)',
+            intel: 'Heavy opposition detected. Green tanks have triple armor plating and will hold defensive positions. Multiple hits required. Recommend using mines and ricocheting shells.'
+        },
+        {
+            title: 'MISSION 4: TOTAL WAR',
+            subtitle: 'Full Combat Zone',
+            objective: 'Achieve total dominance - destroy all enemy armor',
+            enemies: '3 Brown Tanks, 2 Grey Scouts, 3 Green Heavy Tanks',
+            intel: 'Maximum threat level. All enemy types present in force. The maze offers both opportunities and dangers. Watch your six - enemies will attempt flanking maneuvers. Victory here proves your mastery.'
+        }
+    ];
+    
+    const brief = briefings[num - 1];
+    document.getElementById('briefingTitle').textContent = brief.title;
+    document.getElementById('briefingSubtitle').textContent = brief.subtitle;
+    document.getElementById('briefingObjective').textContent = brief.objective;
+    document.getElementById('briefingEnemies').textContent = brief.enemies;
+    document.getElementById('briefingIntel').textContent = brief.intel;
+    
+    document.getElementById('menuScreen').style.display = 'none';
+    document.getElementById('briefingScreen').style.display = 'flex';
+}
+
+function clearScene() {
+    while (G.scene.children.length > 0) {
+        const obj = G.scene.children[0];
+        G.scene.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+        }
+    }
+    G.walls = [];
+    G.wallMeshes = [];
+    // Re-add lights
+    G.scene.add(G.ambientLight);
+    G.scene.add(G.sunLight);
+    const hemiLight = new THREE.HemisphereLight(0xffeebb, 0x806040, 0.4);
+    G.scene.add(hemiLight);
+    G.scene.background = new THREE.Color(0xd4c4a0);
+    G.scene.fog = new THREE.Fog(0xd4c4a0, 60, 120);
+}
+
+// ======================= PLACEHOLDER FUNCTIONS =======================
+// ======================= ENVIRONMENT =======================
+function createFloor() {
+    // Wooden table floor
+    const floorGeo = new THREE.PlaneGeometry(100, 100);
+    floorGeo.rotateX(-Math.PI / 2);
+    const floorMat = new THREE.MeshStandardMaterial({
+        color: 0xc8a872, roughness: 0.7, metalness: 0.05
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.receiveShadow = true;
+    floor.position.y = -0.01;
+    G.scene.add(floor);
+
+    // Wood grain lines on floor
+    for (let i = 0; i < 20; i++) {
+        const lineGeo = new THREE.PlaneGeometry(100, 0.15);
+        lineGeo.rotateX(-Math.PI / 2);
+        const lineMat = new THREE.MeshStandardMaterial({
+            color: 0xb89858, roughness: 0.8, transparent: true, opacity: 0.3
+        });
+        const line = new THREE.Mesh(lineGeo, lineMat);
+        line.position.set(0, 0.005, -50 + i * 5 + Math.random() * 2);
+        G.scene.add(line);
+    }
+
+    // Outer boundary - thick toy wood frame
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.6, metalness: 0.1 });
+    const frameH = 5, frameD = 3;
+    const halfSize = 42;
+    const frames = [
+        { pos: [0, frameH/2, -halfSize - frameD/2], size: [halfSize*2 + frameD*2, frameH, frameD] },
+        { pos: [0, frameH/2, halfSize + frameD/2], size: [halfSize*2 + frameD*2, frameH, frameD] },
+        { pos: [-halfSize - frameD/2, frameH/2, 0], size: [frameD, frameH, halfSize*2] },
+        { pos: [halfSize + frameD/2, frameH/2, 0], size: [frameD, frameH, halfSize*2] }
+    ];
+    frames.forEach(f => {
+        const geo = new THREE.BoxGeometry(f.size[0], f.size[1], f.size[2]);
+        const mesh = new THREE.Mesh(geo, frameMat);
+        mesh.position.set(f.pos[0], f.pos[1], f.pos[2]);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        G.scene.add(mesh);
+    });
+}
+
+function createWalls(mazeIdx) {
+    const maze = MAZES[mazeIdx];
+    const wallH = 3.5;
+
+    // Wood block material with slight color variations
+    maze.walls.forEach(w => {
+        // Skip outer boundary walls — those are the frame
+        if (Math.abs(w.x) > 39 || Math.abs(w.z) > 39) return;
+
+        const width = w.w || 2;
+        const depth = w.d || 2;
+
+        // Create segmented toy blocks
+        const isHorizontal = width > depth;
+        const segLen = 3;
+        const numSegs = Math.ceil((isHorizontal ? width : depth) / segLen);
+
+        for (let s = 0; s < numSegs; s++) {
+            const blockW = isHorizontal ? Math.min(segLen, width - s * segLen) : width;
+            const blockD = isHorizontal ? depth : Math.min(segLen, depth - s * segLen);
+            if (blockW <= 0 || blockD <= 0) continue;
+
+            const colorVariant = 0xC4A45A + Math.floor(Math.random() * 0x202020);
+            const mat = new THREE.MeshStandardMaterial({
+                color: colorVariant, roughness: 0.65, metalness: 0.05
+            });
+
+            const geo = new THREE.BoxGeometry(blockW * 0.95, wallH, blockD * 0.95);
+            const mesh = new THREE.Mesh(geo, mat);
+            const offsetX = isHorizontal ? (w.x - width/2 + s * segLen + blockW/2) : w.x;
+            const offsetZ = isHorizontal ? w.z : (w.z - depth/2 + s * segLen + blockD/2);
+            mesh.position.set(offsetX, wallH / 2, offsetZ);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            G.scene.add(mesh);
+
+            // Add a subtle line/groove on top to show block separation
+            const grooveGeo = new THREE.BoxGeometry(blockW * 0.97, 0.05, blockD * 0.97);
+            const grooveMat = new THREE.MeshStandardMaterial({ color: 0x9a8040, roughness: 0.8 });
+            const groove = new THREE.Mesh(grooveGeo, grooveMat);
+            groove.position.set(offsetX, wallH + 0.02, offsetZ);
+            G.scene.add(groove);
+        }
+
+        // Store wall bounding box for collision
+        G.walls.push({
+            minX: w.x - width/2, maxX: w.x + width/2,
+            minZ: w.z - depth/2, maxZ: w.z + depth/2,
+            x: w.x, z: w.z, w: width, d: depth, h: wallH
+        });
+    });
+
+    // Add boundary walls to collision
+    const halfSize = 42, frameD = 3;
+    G.walls.push({ minX: -halfSize - frameD, maxX: halfSize + frameD, minZ: -halfSize - frameD, maxZ: -halfSize, x:0, z:-halfSize, w:100, d:frameD, h:5 });
+    G.walls.push({ minX: -halfSize - frameD, maxX: halfSize + frameD, minZ: halfSize, maxZ: halfSize + frameD, x:0, z:halfSize, w:100, d:frameD, h:5 });
+    G.walls.push({ minX: -halfSize - frameD, maxX: -halfSize, minZ: -halfSize, maxZ: halfSize, x:-halfSize, z:0, w:frameD, d:100, h:5 });
+    G.walls.push({ minX: halfSize, maxX: halfSize + frameD, minZ: -halfSize, maxZ: halfSize, x:halfSize, z:0, w:frameD, d:100, h:5 });
+}
+// ======================= PLAYER TANK =======================
+function createPlayerTank() {
+    G.playerTank = new THREE.Group();
+
+    // -- Tank body (olive green toy tank) --
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a6b35, roughness: 0.5, metalness: 0.2 });
+    const bodyGeo = new THREE.BoxGeometry(2.2, 0.8, 3.2);
+    G.playerBody = new THREE.Mesh(bodyGeo, bodyMat);
+    G.playerBody.castShadow = true;
+    G.playerBody.position.y = 0.6;
+    G.playerTank.add(G.playerBody);
+
+    // Track sides
+    const trackMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.9, metalness: 0.3 });
+    [-1, 1].forEach(side => {
+        const trackGeo = new THREE.BoxGeometry(0.35, 0.55, 3.4);
+        const track = new THREE.Mesh(trackGeo, trackMat);
+        track.position.set(side * 1.28, 0.35, 0);
+        track.castShadow = true;
+        G.playerTank.add(track);
+
+        // Wheels
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8, metalness: 0.4 });
+        for (let w = -1; w <= 1; w++) {
+            const wheelGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.15, 8);
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(side * 1.45, 0.25, w * 1.2);
+            G.playerTank.add(wheel);
+        }
+    });
+
+    // Turret base
+    G.playerTurret = new THREE.Group();
+    G.playerTurret.position.y = 1.1;
+
+    const turretMat = new THREE.MeshStandardMaterial({ color: 0x3d5c2a, roughness: 0.45, metalness: 0.25 });
+    const turretGeo = new THREE.CylinderGeometry(0.7, 0.85, 0.5, 8);
+    const turretMesh = new THREE.Mesh(turretGeo, turretMat);
+    turretMesh.castShadow = true;
+    G.playerTurret.add(turretMesh);
+
+    // Turret top hatch
+    const hatchGeo = new THREE.CylinderGeometry(0.3, 0.35, 0.15, 8);
+    const hatchMat = new THREE.MeshStandardMaterial({ color: 0x4a6a30, roughness: 0.5, metalness: 0.3 });
+    const hatch = new THREE.Mesh(hatchGeo, hatchMat);
+    hatch.position.y = 0.32;
+    G.playerTurret.add(hatch);
+
+    // Barrel
+    const barrelGroup = new THREE.Group();
+    const barrelGeo = new THREE.CylinderGeometry(0.08, 0.1, 2.2, 8);
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.3, metalness: 0.7 });
+    G.playerBarrel = new THREE.Mesh(barrelGeo, barrelMat);
+    G.playerBarrel.rotation.x = Math.PI / 2;
+    G.playerBarrel.position.z = -1.1;
+    G.playerBarrel.castShadow = true;
+    barrelGroup.add(G.playerBarrel);
+
+    // Muzzle brake
+    const muzzleGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.15, 8);
+    const muzzle = new THREE.Mesh(muzzleGeo, barrelMat);
+    muzzle.rotation.x = Math.PI / 2;
+    muzzle.position.z = -2.2;
+    barrelGroup.add(muzzle);
+
+    G.playerTurret.add(barrelGroup);
+    G.playerTank.add(G.playerTurret);
+
+    G.scene.add(G.playerTank);
+}
+
+// ======================= CAMERA =======================
+function updateCamera() {
+    const turretWorldAngle = G.turretAngle;
+
+    if (G.cameraMode === 0) {
+        // First-person view from inside the tank turret
+        const camX = G.playerPos.x - Math.sin(turretWorldAngle) * 0.3;
+        const camZ = G.playerPos.z - Math.cos(turretWorldAngle) * 0.3;
+        const camY = 1.8;
+
+        G.camera.position.set(camX, camY, camZ);
+
+        // Look direction based on turret angle and barrel pitch
+        const lookDist = 20;
+        const lookX = camX - Math.sin(turretWorldAngle) * lookDist;
+        const lookZ = camZ - Math.cos(turretWorldAngle) * lookDist;
+        const lookY = camY + G.barrelPitch * lookDist;
+        G.camera.lookAt(lookX, lookY, lookZ);
+    } 
+    else if (G.cameraMode === 1) {
+        // Third-person zoomed out - behind and above the turret
+        const camDist = 12;
+        const camHeight = 8;
+        const camX = G.playerPos.x + Math.sin(turretWorldAngle) * camDist;
+        const camZ = G.playerPos.z + Math.cos(turretWorldAngle) * camDist;
+        const camY = camHeight;
+
+        G.camera.position.set(camX, camY, camZ);
+
+        // Look at point in front of tank
+        const lookDist = 8;
+        const lookX = G.playerPos.x - Math.sin(turretWorldAngle) * lookDist;
+        const lookZ = G.playerPos.z - Math.cos(turretWorldAngle) * lookDist;
+        const lookY = 1.5;
+        G.camera.lookAt(lookX, lookY, lookZ);
+    }
+    else if (G.cameraMode === 2) {
+        // Top-down view directly above the tank
+        const camHeight = 25;
+        G.camera.position.set(G.playerPos.x, camHeight, G.playerPos.z);
+        
+        // Look straight down at the tank with slight offset in turret direction
+        const lookX = G.playerPos.x - Math.sin(turretWorldAngle) * 2;
+        const lookZ = G.playerPos.z - Math.cos(turretWorldAngle) * 2;
+        G.camera.lookAt(lookX, 0, lookZ);
+    }
+}
+// ======================= ENEMY TANKS =======================
+function spawnEnemies(mazeIdx) {
+    const maze = MAZES[mazeIdx];
+    maze.enemies.forEach(e => {
+        const type = TANK_TYPES[e.type];
+        const enemy = createEnemyTank(e.type);
+        enemy.position.set(e.x, 0, e.z);
+
+        const data = {
+            mesh: enemy, type: e.type,
+            x: e.x, z: e.z,
+            angle: Math.random() * Math.PI * 2,
+            turretAngle: Math.random() * Math.PI * 2,
+            speed: type.speed,
+            turnSpeed: type.turnSpeed,
+            fireRate: type.fireRate,
+            health: type.health,
+            maxHealth: type.health,
+            shellSpeed: type.shellSpeed,
+            ai: type.ai,
+            fireCooldown: 2 + Math.random() * 3,
+            aiTimer: 0,
+            aiState: 'idle',
+            patrolTarget: null,
+            alive: true,
+            moveDir: 1,
+            stuckTimer: 0,
+            lastX: e.x, lastZ: e.z,
+            seesPlayer: false,
+            turretGroup: enemy.children.find(c => c.isTurretGroup)
+        };
+
+        G.enemies.push(data);
+        G.scene.add(enemy);
+    });
+}
+
+function createEnemyTank(typeName) {
+    const type = TANK_TYPES[typeName];
+    const tank = new THREE.Group();
+
+    // Body
+    const bodyMat = new THREE.MeshStandardMaterial({ color: type.color, roughness: 0.5, metalness: 0.2 });
+    const bodyGeo = new THREE.BoxGeometry(2.0, 0.7, 2.8);
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.castShadow = true;
+    body.position.y = 0.55;
+    tank.add(body);
+
+    // Tracks
+    const trackMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9, metalness: 0.3 });
+    [-1, 1].forEach(side => {
+        const trackGeo = new THREE.BoxGeometry(0.3, 0.5, 3.0);
+        const track = new THREE.Mesh(trackGeo, trackMat);
+        track.position.set(side * 1.15, 0.3, 0);
+        track.castShadow = true;
+        tank.add(track);
+    });
+
+    // Turret
+    const turret = new THREE.Group();
+    turret.isTurretGroup = true;
+    turret.position.y = 1.0;
+
+    const turretMat = new THREE.MeshStandardMaterial({ color: type.color, roughness: 0.45, metalness: 0.25 });
+    const turretGeo = new THREE.CylinderGeometry(0.6, 0.75, 0.45, 8);
+    const turretMesh = new THREE.Mesh(turretGeo, turretMat);
+    turretMesh.castShadow = true;
+    turret.add(turretMesh);
+
+    // Barrel
+    const barrelGeo = new THREE.CylinderGeometry(0.07, 0.09, 1.8, 8);
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.3, metalness: 0.7 });
+    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.z = -0.9;
+    barrel.castShadow = true;
+    turret.add(barrel);
+
+    tank.add(turret);
+
+    // Health bar for enemies with > 1hp
+    if (type.health > 1) {
+        const hpBarBg = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.5, 0.15),
+            new THREE.MeshBasicMaterial({ color: 0x440000, side: THREE.DoubleSide })
+        );
+        hpBarBg.position.y = 2.0;
+        hpBarBg.rotation.x = 0;
+        hpBarBg.name = 'hpBarBg';
+        tank.add(hpBarBg);
+
+        const hpBar = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.5, 0.15),
+            new THREE.MeshBasicMaterial({ color: 0x44ff44, side: THREE.DoubleSide })
+        );
+        hpBar.position.y = 2.0;
+        hpBar.name = 'hpBar';
+        tank.add(hpBar);
+    }
+
+    return tank;
+}
+// ======================= WEAPONS =======================
+function fireShell() {
+    if (G.shellCooldown > 0 || G.shells <= 0 || G.shellReloadTime > 0) return;
+    G.shells--;
+    G.shellCooldown = 0.5;
+    
+    // Play fire sound
+    if (SOUNDS) SOUNDS.fire();
+
+    const shellSpeed = 35;
+    const dirX = -Math.sin(G.turretAngle);
+    const dirZ = -Math.cos(G.turretAngle);
+
+    // Spawn from barrel tip
+    const spawnX = G.playerPos.x + dirX * 2.5;
+    const spawnZ = G.playerPos.z + dirZ * 2.5;
+
+    const shellGeo = new THREE.SphereGeometry(0.12, 6, 6);
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xff8800, emissiveIntensity: 0.5 });
+    const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+    shellMesh.position.set(spawnX, 1.3, spawnZ);
+    shellMesh.castShadow = true;
+    G.scene.add(shellMesh);
+
+    // Shell trail light
+    const light = new THREE.PointLight(0xff8800, 0.5, 5);
+    shellMesh.add(light);
+
+    G.activeShells.push({
+        mesh: shellMesh,
+        x: spawnX, z: spawnZ, y: 1.3,
+        vx: dirX * shellSpeed, vz: dirZ * shellSpeed,
+        bounces: 0, maxBounces: G.maxBounces,
+        life: 4, isPlayer: true
+    });
+
+    // Muzzle flash
+    createMuzzleFlash(spawnX, 1.3, spawnZ);
+}
+
+function fireEnemyShell(enemy) {
+    const dirX = -Math.sin(enemy.turretAngle);
+    const dirZ = -Math.cos(enemy.turretAngle);
+    const spawnX = enemy.x + dirX * 2.0;
+    const spawnZ = enemy.z + dirZ * 2.0;
+
+    const shellGeo = new THREE.SphereGeometry(0.1, 6, 6);
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xff0000, emissiveIntensity: 0.5 });
+    const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+    shellMesh.position.set(spawnX, 1.1, spawnZ);
+    G.scene.add(shellMesh);
+
+    const light = new THREE.PointLight(0xff4400, 0.4, 4);
+    shellMesh.add(light);
+
+    G.activeShells.push({
+        mesh: shellMesh,
+        x: spawnX, z: spawnZ, y: 1.1,
+        vx: dirX * enemy.shellSpeed, vz: dirZ * enemy.shellSpeed,
+        bounces: 0, maxBounces: G.maxBounces,
+        life: 4, isPlayer: false
+    });
+
+    createMuzzleFlash(spawnX, 1.1, spawnZ);
+}
+
+function createMuzzleFlash(x, y, z) {
+    const flashGeo = new THREE.SphereGeometry(0.3, 6, 6);
+    const flashMat = new THREE.MeshBasicMaterial({ color: 0xffff88, transparent: true, opacity: 1 });
+    const flash = new THREE.Mesh(flashGeo, flashMat);
+    flash.position.set(x, y, z);
+    G.scene.add(flash);
+
+    const flashLight = new THREE.PointLight(0xff8800, 2, 8);
+    flash.add(flashLight);
+
+    G.particles.push({ mesh: flash, life: 0.15, maxLife: 0.15, type: 'flash' });
+}
+
+function layMine() {
+    if (G.mineCooldown > 0 || G.mines <= 0) return;
+    G.mines--;
+    G.mineCooldown = 1.0;
+    
+    // Play mine deploy sound
+    if (SOUNDS) SOUNDS.mineDeploy();
+
+    const mineGeo = new THREE.CylinderGeometry(0.4, 0.45, 0.2, 8);
+    const mineMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.6 });
+    const mineMesh = new THREE.Mesh(mineGeo, mineMat);
+    mineMesh.position.set(G.playerPos.x, 0.12, G.playerPos.z);
+    mineMesh.castShadow = true;
+    G.scene.add(mineMesh);
+
+    // Blinking light on mine
+    const indicatorGeo = new THREE.SphereGeometry(0.06, 4, 4);
+    const indicatorMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const indicator = new THREE.Mesh(indicatorGeo, indicatorMat);
+    indicator.position.y = 0.12;
+    mineMesh.add(indicator);
+
+    G.activeMines.push({
+        mesh: mineMesh,
+        indicator: indicator,
+        x: G.playerPos.x, z: G.playerPos.z,
+        timer: G.mineTimer,
+        blinkTimer: 0
+    });
+}
+
+function detonateAllMines() {
+    G.activeMines.forEach(mine => {
+        detonateMine(mine);
+    });
+    G.activeMines = [];
+}
+
+function detonateMine(mine) {
+    createExplosion(mine.x, 0.5, mine.z, 3.5);
+    G.scene.remove(mine.mesh);
+
+    // Damage nearby enemies
+    G.enemies.forEach(enemy => {
+        if (!enemy.alive) return;
+        const dist = Math.sqrt((enemy.x - mine.x) ** 2 + (enemy.z - mine.z) ** 2);
+        if (dist < 4) {
+            damageEnemy(enemy, 1);
+        }
+    });
+
+    // Damage player if close
+    const playerDist = Math.sqrt((G.playerPos.x - mine.x) ** 2 + (G.playerPos.z - mine.z) ** 2);
+    if (playerDist < 4) {
+        damagePlayer(25);
+    }
+}
+
+function reloadShells() {
+    if (G.shells < G.maxShells && G.shellReloadTime <= 0) {
+        G.shellReloadTime = 2.0;
+        showNotification('RELOADING...');
+    }
+}
+
+// ======================= SHELL UPDATE =======================
+function updateShells(dt) {
+    for (let i = G.activeShells.length - 1; i >= 0; i--) {
+        const shell = G.activeShells[i];
+        shell.life -= dt;
+
+        const newX = shell.x + shell.vx * dt;
+        const newZ = shell.z + shell.vz * dt;
+
+        // Check wall bouncing
+        let bounced = false;
+        for (const wall of G.walls) {
+            // Check if shell enters wall
+            if (newX > wall.minX - 0.15 && newX < wall.maxX + 0.15 &&
+                newZ > wall.minZ - 0.15 && newZ < wall.maxZ + 0.15) {
+
+                shell.bounces++;
+                if (shell.bounces > shell.maxBounces) {
+                    // Destroy shell on 2nd bounce
+                    createSmallExplosion(shell.x, shell.y, shell.z);
+                    G.scene.remove(shell.mesh);
+                    G.activeShells.splice(i, 1);
+                    bounced = true;
+                    break;
+                }
+
+                // Determine which face was hit and reflect
+                const fromLeft = shell.x <= wall.minX;
+                const fromRight = shell.x >= wall.maxX;
+                const fromTop = shell.z <= wall.minZ;
+                const fromBottom = shell.z >= wall.maxZ;
+
+                if (fromLeft || fromRight) {
+                    shell.vx = -shell.vx;
+                } else if (fromTop || fromBottom) {
+                    shell.vz = -shell.vz;
+                } else {
+                    // Inside somehow, reflect both
+                    shell.vx = -shell.vx;
+                    shell.vz = -shell.vz;
+                }
+
+                // Spark particles on bounce
+                createBounceParticles(shell.x, shell.y, shell.z);
+                // Play ricochet sound
+                if (SOUNDS) SOUNDS.ricochet();
+                bounced = true;
+                break;
+            }
+        }
+
+        if (bounced && shell.bounces <= shell.maxBounces) {
+            // Shell survived the bounce, continue
+            shell.mesh.position.set(shell.x, shell.y, shell.z);
+            continue;
+        }
+        if (bounced) continue; // Already removed
+
+        shell.x = newX;
+        shell.z = newZ;
+        shell.mesh.position.set(shell.x, shell.y, shell.z);
+
+        // Check hit enemies (player shells)
+        if (shell.isPlayer) {
+            for (const enemy of G.enemies) {
+                if (!enemy.alive) continue;
+                const dist = Math.sqrt((shell.x - enemy.x) ** 2 + (shell.z - enemy.z) ** 2);
+                if (dist < 1.5) {
+                    damageEnemy(enemy, 1);
+                    createExplosion(shell.x, 1, shell.z, 2);
+                    G.scene.remove(shell.mesh);
+                    G.activeShells.splice(i, 1);
+                    bounced = true;
+                    break;
+                }
+            }
+        } else {
+            // Enemy shell hitting player
+            const dist = Math.sqrt((shell.x - G.playerPos.x) ** 2 + (shell.z - G.playerPos.z) ** 2);
+            if (dist < 1.5) {
+                damagePlayer(20);
+                createExplosion(shell.x, 1, shell.z, 2);
+                G.scene.remove(shell.mesh);
+                G.activeShells.splice(i, 1);
+                continue;
+            }
+            // Enemy shells can also hit other enemies
+            for (const enemy of G.enemies) {
+                if (!enemy.alive) continue;
+                const edist = Math.sqrt((shell.x - enemy.x) ** 2 + (shell.z - enemy.z) ** 2);
+                if (edist < 1.5) {
+                    damageEnemy(enemy, 1);
+                    createExplosion(shell.x, 1, shell.z, 2);
+                    G.scene.remove(shell.mesh);
+                    G.activeShells.splice(i, 1);
+                    bounced = true;
+                    break;
+                }
+            }
+        }
+        if (bounced) continue;
+
+        // Remove if expired
+        if (shell.life <= 0) {
+            G.scene.remove(shell.mesh);
+            G.activeShells.splice(i, 1);
+        }
+    }
+}
+// ======================= HUD =======================
+function updateMissionText() {
+    const el = document.getElementById('missionText');
+    const sub = document.getElementById('missionSub');
+    el.textContent = 'MISSION ' + G.currentMission;
+    const remaining = G.missionTargets - G.missionKills;
+    sub.textContent = remaining > 0 ? remaining + ' TANK' + (remaining > 1 ? 'S' : '') + ' REMAINING' : 'ALL TARGETS ELIMINATED';
+}
+
+function updateHUD() {
+    // Shell count with warning color
+    const shellEl = document.getElementById('shellCount');
+    if (G.shellReloadTime > 0) {
+        shellEl.textContent = 'RELOADING...';
+        shellEl.style.color = '#ffaa44';
+    } else {
+        shellEl.textContent = 'SHELLS: ' + G.shells + ' / ' + G.maxShells;
+        shellEl.style.color = G.shells <= 1 ? '#ff4444' : '#ff8844';
+        shellEl.style.textShadow = G.shells <= 1 ? '0 0 12px #ff4444' : '0 0 8px #ff8844';
+    }
+    
+    // Mine count with warning color
+    const mineEl = document.getElementById('mineCount');
+    mineEl.textContent = 'MINES: ' + G.mines + ' / ' + G.maxMines;
+    mineEl.style.color = G.mines === 0 ? '#aa6644' : '#ffcc44';
+    document.getElementById('hullFill').style.width = G.hull + '%';
+    document.getElementById('hullFill').style.background =
+        G.hull > 60 ? '#44ff44' : (G.hull > 30 ? '#ffaa44' : '#ff4444');
+    document.getElementById('hullText').textContent = 'HULL INTEGRITY ' + Math.round(G.hull) + '%';
+    document.getElementById('speedVal').textContent = Math.abs(Math.round(G.playerSpeed));
+    document.getElementById('killsVal').textContent = G.missionKills;
+
+    // Camera mode indicator
+    const modes = ['FIRST-PERSON', 'THIRD-PERSON', 'TOP-DOWN'];
+    document.getElementById('cameraMode').textContent = 'CAMERA: ' + modes[G.cameraMode];
+
+    // Heading
+    const deg = ((G.playerAngle * 180 / Math.PI) % 360 + 360) % 360;
+    let dir = 'N';
+    if (deg > 315 || deg <= 45) dir = 'N';
+    else if (deg > 45 && deg <= 135) dir = 'W';
+    else if (deg > 135 && deg <= 225) dir = 'S';
+    else dir = 'E';
+    document.getElementById('headingVal').textContent = dir + ' ' + Math.round(deg) + '°';
+    
+    // Distance to nearest enemy
+    let nearestDist = Infinity;
+    G.enemies.forEach(enemy => {
+        if (!enemy.alive) return;
+        const dx = G.playerPos.x - enemy.x;
+        const dz = G.playerPos.z - enemy.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < nearestDist) nearestDist = dist;
+    });
+    
+    const distEl = document.getElementById('distanceMeter');
+    if (nearestDist < Infinity) {
+        distEl.textContent = 'NEAREST ENEMY: ' + Math.round(nearestDist) + 'm';
+        distEl.style.color = nearestDist < 10 ? '#ff4444' : '#ff8844';
+        distEl.style.textShadow = nearestDist < 10 ? '0 0 12px #ff4444' : '0 0 8px #ff8844';
+    } else {
+        distEl.textContent = '';
+    }
+}
+
+function updateMiniMap() {
+    const ctx = G.miniMapCtx;
+    const cw = 160, ch = 160;
+    const scale = 1.8;
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Background
+    ctx.fillStyle = 'rgba(10,20,10,0.95)';
+    ctx.fillRect(0, 0, cw, ch);
+
+    // Draw walls
+    ctx.fillStyle = 'rgba(150,130,80,0.6)';
+    G.walls.forEach(w => {
+        const wx = (w.minX / scale) + cw/2;
+        const wz = (w.minZ / scale) + ch/2;
+        const ww = (w.maxX - w.minX) / scale;
+        const wd = (w.maxZ - w.minZ) / scale;
+        ctx.fillRect(wx, wz, ww, wd);
+    });
+
+    // Draw mines
+    G.activeMines.forEach(mine => {
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.arc(mine.x / scale + cw/2, mine.z / scale + ch/2, 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Draw enemies
+    G.enemies.forEach(enemy => {
+        if (!enemy.alive) return;
+        ctx.fillStyle = enemy.type === 'brown' ? '#aa6633' : (enemy.type === 'grey' ? '#888888' : '#44aa44');
+        ctx.beginPath();
+        ctx.arc(enemy.x / scale + cw/2, enemy.z / scale + ch/2, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Draw player
+    ctx.fillStyle = '#00ff88';
+    const px = G.playerPos.x / scale + cw/2;
+    const pz = G.playerPos.z / scale + ch/2;
+    ctx.beginPath();
+    ctx.arc(px, pz, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Player direction indicator
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(px, pz);
+    ctx.lineTo(px - Math.sin(G.turretAngle) * 8, pz - Math.cos(G.turretAngle) * 8);
+    ctx.stroke();
+
+    // Active shells
+    ctx.fillStyle = '#ffcc00';
+    G.activeShells.forEach(s => {
+        if (s.isPlayer) ctx.fillStyle = '#ffcc00';
+        else ctx.fillStyle = '#ff4444';
+        ctx.fillRect(s.x / scale + cw/2 - 1, s.z / scale + ch/2 - 1, 2, 2);
+    });
+}
+
+function addKillFeed(text) {
+    const feed = document.getElementById('killFeed');
+    const entry = document.createElement('div');
+    entry.className = 'kill-entry';
+    entry.textContent = text;
+    feed.prepend(entry);
+    setTimeout(() => { entry.style.opacity = 0; }, 2000);
+    setTimeout(() => { entry.remove(); }, 3000);
+}
+
+function showNotification(msg) {
+    const el = document.getElementById('notification');
+    el.textContent = msg;
+    el.style.opacity = 1;
+    setTimeout(() => el.style.opacity = 0, 2000);
+}
+
+// ======================= MISSION STATUS =======================
+function checkMissionStatus() {
+    if (G.missionKills >= G.missionTargets && !G.missionComplete) {
+        G.missionComplete = true;
+        G.missionActive = false;
+        // Play victory sound
+        if (SOUNDS) SOUNDS.victory();
+        setTimeout(() => showEndScreen(true), 1500);
+        showNotification('MISSION COMPLETE!');
+    }
+}
+
+function showEndScreen(victory) {
+    document.getElementById('endScreen').style.display = 'flex';
+    const title = document.getElementById('endTitle');
+    const stats = document.getElementById('endStats');
+    if (victory) {
+        title.textContent = 'MISSION COMPLETE';
+        title.style.color = '#6aaa40';
+        title.style.textShadow = '0 0 30px #4a8a30';
+        stats.textContent = 'Tanks Destroyed: ' + G.missionKills + ' | Hull: ' + Math.round(G.hull) + '%';
+    } else {
+        title.textContent = 'DESTROYED';
+        title.style.color = '#ff4444';
+        title.style.textShadow = '0 0 30px #ff0000';
+        stats.textContent = 'Tanks Destroyed: ' + G.missionKills + ' / ' + G.missionTargets;
+    }
+    if (document.pointerLockElement) document.exitPointerLock();
+}
+
+// ======================= ANIMATION LOOP =======================
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(G.clock.getDelta(), 0.05);
+    G.time += dt;
+
+    if (G.missionActive && !G.missionComplete && !G.missionFailed && !G.paused) {
+        updatePlayer(dt);
+        updateShells(dt);
+        updateEnemies(dt);
+        updateMines(dt);
+        updateExplosions(dt);
+        updateParticles(dt);
+        updateCamera();
+        updateHUD();
+        updateMiniMap();
+        checkMissionStatus();
+    }
+
+    G.renderer.render(G.scene, G.camera);
+}
+
+// ======================= PLAYER UPDATE =======================
+function updatePlayer(dt) {
+    // Turret aim follows mouse
+    G.turretAngle = G.mouse.x + Math.PI;
+    G.barrelPitch = -G.mouse.y;
+
+    // Tank body movement
+    let moveInput = 0, turnInput = 0;
+    if (G.keys['w']) moveInput = 1;
+    if (G.keys['s']) moveInput = -1;
+    if (G.keys['a']) turnInput = 1;
+    if (G.keys['d']) turnInput = -1;
+
+    // Turn the tank body
+    if (moveInput !== 0) {
+        G.playerAngle += turnInput * G.turnSpeed * dt;
+    } else {
+        // Allow turning in place but slower
+        G.playerAngle += turnInput * G.turnSpeed * 0.6 * dt;
+    }
+
+    // Acceleration / deceleration
+    const targetSpeed = moveInput * G.maxSpeed;
+    G.playerSpeed += (targetSpeed - G.playerSpeed) * dt * 4;
+    if (Math.abs(G.playerSpeed) < 0.1) G.playerSpeed = 0;
+    
+    // Engine sound (adjust volume based on speed)
+    if (engineSound) {
+        const targetVolume = Math.abs(G.playerSpeed) / G.maxSpeed * 0.15;
+        const currentVolume = engineSound.volume();
+        engineSound.volume(currentVolume + (targetVolume - currentVolume) * 0.1);
+        
+        if (targetVolume > 0.01 && !engineSound.playing()) {
+            engineSound.play();
+        } else if (targetVolume <= 0.01 && engineSound.playing()) {
+            engineSound.pause();
+        }
+    }
+
+    // Try to move
+    const dx = -Math.sin(G.playerAngle) * G.playerSpeed * dt;
+    const dz = -Math.cos(G.playerAngle) * G.playerSpeed * dt;
+
+    const newX = G.playerPos.x + dx;
+    const newZ = G.playerPos.z + dz;
+
+    // Collision with walls (AABB with tank radius)
+    const tankRadius = 1.3;
+    let canMoveX = true, canMoveZ = true;
+
+    for (const wall of G.walls) {
+        // Check X movement
+        if (newX + tankRadius > wall.minX && newX - tankRadius < wall.maxX &&
+            G.playerPos.z + tankRadius > wall.minZ && G.playerPos.z - tankRadius < wall.maxZ) {
+            canMoveX = false;
+        }
+        // Check Z movement
+        if (G.playerPos.x + tankRadius > wall.minX && G.playerPos.x - tankRadius < wall.maxX &&
+            newZ + tankRadius > wall.minZ && newZ - tankRadius < wall.maxZ) {
+            canMoveZ = false;
+        }
+    }
+
+    // Also collide with enemy tanks
+    for (const enemy of G.enemies) {
+        if (!enemy.alive) continue;
+        const edx = newX - enemy.x;
+        const edz = G.playerPos.z - enemy.z;
+        if (Math.sqrt(edx*edx + edz*edz) < 2.5) canMoveX = false;
+        const edx2 = G.playerPos.x - enemy.x;
+        const edz2 = newZ - enemy.z;
+        if (Math.sqrt(edx2*edx2 + edz2*edz2) < 2.5) canMoveZ = false;
+    }
+
+    if (canMoveX) G.playerPos.x = newX;
+    else G.playerSpeed *= -0.3;
+    if (canMoveZ) G.playerPos.z = newZ;
+    else G.playerSpeed *= -0.3;
+
+    // Update tank mesh
+    G.playerTank.position.set(G.playerPos.x, 0, G.playerPos.z);
+    G.playerTank.rotation.y = G.playerAngle;
+    G.playerTurret.rotation.y = G.turretAngle - G.playerAngle;
+
+    // Cooldowns
+    if (G.shellCooldown > 0) G.shellCooldown -= dt;
+    if (G.mineCooldown > 0) G.mineCooldown -= dt;
+    if (G.shellReloadTime > 0) {
+        G.shellReloadTime -= dt;
+        if (G.shellReloadTime <= 0) {
+            G.shells = G.maxShells;
+            showNotification('SHELLS RELOADED');
+        }
+    }
+    
+    // Smoke trail when damaged
+    if (G.hull < 70) {
+        G.playerSmokeTimer = (G.playerSmokeTimer || 0) + dt;
+        const smokeRate = G.hull < 30 ? 0.1 : 0.2;
+        if (G.playerSmokeTimer > smokeRate) {
+            G.playerSmokeTimer = 0;
+            createSmokeParticle(G.playerPos.x, 1.2, G.playerPos.z);
+        }
+    }
+}
+// ======================= ENEMY AI =======================
+function updateEnemies(dt) {
+    G.enemies.forEach(enemy => {
+        if (!enemy.alive) return;
+
+        // Line of sight check
+        enemy.seesPlayer = hasLineOfSight(enemy.x, enemy.z, G.playerPos.x, G.playerPos.z);
+        const dxP = G.playerPos.x - enemy.x;
+        const dzP = G.playerPos.z - enemy.z;
+        const distToPlayer = Math.sqrt(dxP * dxP + dzP * dzP);
+        const angleToPlayer = Math.atan2(-dxP, -dzP);
+
+        // Turret AI: aim at player if visible
+        if (enemy.seesPlayer) {
+            const angleDiff = normalizeAngle(angleToPlayer - enemy.turretAngle);
+            enemy.turretAngle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 2.5 * dt);
+
+            // Fire if aimed close enough
+            enemy.fireCooldown -= dt;
+            if (enemy.fireCooldown <= 0 && Math.abs(angleDiff) < 0.2) {
+                fireEnemyShell(enemy);
+                enemy.fireCooldown = enemy.fireRate + Math.random() * 1.0;
+            }
+        }
+
+        // Movement AI
+        enemy.aiTimer -= dt;
+        if (enemy.aiTimer <= 0) {
+            enemy.aiTimer = 1.5 + Math.random() * 2;
+
+            if (enemy.ai === 'patrol') {
+                // Patrol: pick random nearby point
+                enemy.patrolTarget = {
+                    x: enemy.x + (Math.random() - 0.5) * 20,
+                    z: enemy.z + (Math.random() - 0.5) * 20
+                };
+                enemy.aiState = 'moving';
+            } else if (enemy.ai === 'chase') {
+                // Chase: move toward player if visible
+                if (enemy.seesPlayer && distToPlayer > 8) {
+                    enemy.patrolTarget = {
+                        x: G.playerPos.x + (Math.random() - 0.5) * 6,
+                        z: G.playerPos.z + (Math.random() - 0.5) * 6
+                    };
+                    enemy.aiState = 'moving';
+                } else {
+                    enemy.patrolTarget = {
+                        x: enemy.x + (Math.random() - 0.5) * 15,
+                        z: enemy.z + (Math.random() - 0.5) * 15
+                    };
+                    enemy.aiState = 'moving';
+                }
+            } else if (enemy.ai === 'guard') {
+                // Guard: stay mostly stationary, slight repositioning
+                if (enemy.seesPlayer && distToPlayer < 6) {
+                    // Back away
+                    enemy.patrolTarget = {
+                        x: enemy.x - dxP * 0.3,
+                        z: enemy.z - dzP * 0.3
+                    };
+                    enemy.aiState = 'moving';
+                } else if (Math.random() > 0.6) {
+                    enemy.patrolTarget = {
+                        x: enemy.x + (Math.random() - 0.5) * 8,
+                        z: enemy.z + (Math.random() - 0.5) * 8
+                    };
+                    enemy.aiState = 'moving';
+                } else {
+                    enemy.aiState = 'idle';
+                }
+            }
+        }
+
+        // Movement execution
+        if (enemy.aiState === 'moving' && enemy.patrolTarget) {
+            const tdx = enemy.patrolTarget.x - enemy.x;
+            const tdz = enemy.patrolTarget.z - enemy.z;
+            const dist = Math.sqrt(tdx * tdx + tdz * tdz);
+
+            if (dist < 1.5) {
+                enemy.aiState = 'idle';
+            } else {
+                const targetAngle = Math.atan2(-tdx, -tdz);
+                const angleDiff = normalizeAngle(targetAngle - enemy.angle);
+                enemy.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), enemy.turnSpeed * dt);
+
+                // Move forward
+                const moveSpeed = enemy.speed * dt;
+                const mx = -Math.sin(enemy.angle) * moveSpeed;
+                const mz = -Math.cos(enemy.angle) * moveSpeed;
+
+                const newX = enemy.x + mx;
+                const newZ = enemy.z + mz;
+
+                // Collision
+                if (!enemyCollides(newX, newZ, enemy)) {
+                    enemy.x = newX;
+                    enemy.z = newZ;
+                    enemy.stuckTimer = 0;
+                } else {
+                    enemy.stuckTimer += dt;
+                    if (enemy.stuckTimer > 1) {
+                        // Pick new random target
+                        enemy.patrolTarget = {
+                            x: enemy.x + (Math.random() - 0.5) * 10,
+                            z: enemy.z + (Math.random() - 0.5) * 10
+                        };
+                        enemy.stuckTimer = 0;
+                    }
+                }
+            }
+        }
+
+        // Update mesh position
+        enemy.mesh.position.set(enemy.x, 0, enemy.z);
+        enemy.mesh.rotation.y = enemy.angle;
+        if (enemy.turretGroup) {
+            enemy.turretGroup.rotation.y = enemy.turretAngle - enemy.angle;
+        }
+
+        // Billboard health bar
+        const hpBar = enemy.mesh.children.find(c => c.name === 'hpBar');
+        const hpBarBg = enemy.mesh.children.find(c => c.name === 'hpBarBg');
+        if (hpBar) {
+            hpBar.lookAt(G.camera.position);
+            hpBarBg.lookAt(G.camera.position);
+        }
+    });
+}
+
+function enemyCollides(x, z, self) {
+    const radius = 1.2;
+    // Wall collision
+    for (const wall of G.walls) {
+        if (x + radius > wall.minX && x - radius < wall.maxX &&
+            z + radius > wall.minZ && z - radius < wall.maxZ) {
+            return true;
+        }
+    }
+    // Player collision
+    const pdx = x - G.playerPos.x;
+    const pdz = z - G.playerPos.z;
+    if (Math.sqrt(pdx * pdx + pdz * pdz) < 2.5) return true;
+
+    // Other enemies
+    for (const e of G.enemies) {
+        if (e === self || !e.alive) continue;
+        const edx = x - e.x;
+        const edz = z - e.z;
+        if (Math.sqrt(edx * edx + edz * edz) < 2.5) return true;
+    }
+    return false;
+}
+
+function hasLineOfSight(x1, z1, x2, z2) {
+    // Raycast through walls
+    const steps = 20;
+    const dx = (x2 - x1) / steps;
+    const dz = (z2 - z1) / steps;
+    for (let i = 1; i < steps; i++) {
+        const cx = x1 + dx * i;
+        const cz = z1 + dz * i;
+        for (const wall of G.walls) {
+            if (cx > wall.minX && cx < wall.maxX &&
+                cz > wall.minZ && cz < wall.maxZ) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function normalizeAngle(a) {
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+}
+// ======================= MINE UPDATE =======================
+function updateMines(dt) {
+    for (let i = G.activeMines.length - 1; i >= 0; i--) {
+        const mine = G.activeMines[i];
+        mine.timer -= dt;
+        mine.blinkTimer += dt;
+
+        // Blink faster as timer runs out
+        const blinkRate = mine.timer < 2 ? 0.15 : (mine.timer < 4 ? 0.3 : 0.6);
+        mine.indicator.visible = Math.sin(mine.blinkTimer / blinkRate * Math.PI) > 0;
+
+        // Proximity detonation for enemies
+        for (const enemy of G.enemies) {
+            if (!enemy.alive) continue;
+            const dist = Math.sqrt((enemy.x - mine.x) ** 2 + (enemy.z - mine.z) ** 2);
+            if (dist < 2.0) {
+                detonateMine(mine);
+                G.activeMines.splice(i, 1);
+                break;
+            }
+        }
+
+        // Auto-detonate
+        if (mine.timer <= 0) {
+            detonateMine(mine);
+            G.activeMines.splice(i, 1);
+        }
+    }
+}
+// ======================= DAMAGE & EFFECTS =======================
+function damageEnemy(enemy, amount) {
+    enemy.health -= amount;
+    if (enemy.health <= 0) {
+        enemy.alive = false;
+        createExplosion(enemy.x, 1, enemy.z, 4);
+        G.scene.remove(enemy.mesh);
+        G.missionKills++;
+        addKillFeed(enemy.type.toUpperCase() + ' TANK DESTROYED');
+        updateMissionText();
+    } else {
+        // Flash the enemy red briefly
+        enemy.mesh.children.forEach(c => {
+            if (c.material && c.material.color) {
+                const origColor = c.material.color.getHex();
+                c.material.emissive = new THREE.Color(0xff0000);
+                c.material.emissiveIntensity = 0.5;
+                setTimeout(() => {
+                    if (c.material) {
+                        c.material.emissive = new THREE.Color(0x000000);
+                        c.material.emissiveIntensity = 0;
+                    }
+                }, 200);
+            }
+        });
+        // Update health bar
+        const hpBar = enemy.mesh.children.find(c => c.name === 'hpBar');
+        if (hpBar) {
+            hpBar.scale.x = enemy.health / enemy.maxHealth;
+            hpBar.position.x = -(1 - enemy.health / enemy.maxHealth) * 0.75;
+        }
+        
+        // Add smoke trail if damaged
+        if (enemy.health < enemy.maxHealth) {
+            enemy.smokeTimer = (enemy.smokeTimer || 0) + 0.016;
+            if (enemy.smokeTimer > 0.15) {
+                enemy.smokeTimer = 0;
+                createSmokeParticle(enemy.x, 1.2, enemy.z);
+            }
+        }
+    }
+}
+
+function damagePlayer(amount) {
+    G.hull -= amount;
+    // Play hit sound
+    if (SOUNDS) SOUNDS.hit();
+    if (G.hull <= 0) {
+        G.hull = 0;
+        G.missionFailed = true;
+        G.missionActive = false;
+        // Play defeat sound
+        if (SOUNDS) SOUNDS.defeat();
+        showEndScreen(false);
+    }
+    // Red flash overlay
+    const overlay = document.getElementById('damageOverlay');
+    overlay.style.borderWidth = '20px';
+    overlay.style.borderColor = 'rgba(255,0,0,0.6)';
+    setTimeout(() => {
+        overlay.style.borderWidth = '0px';
+        overlay.style.borderColor = 'rgba(255,0,0,0)';
+    }, 300);
+}
+
+function createExplosion(x, y, z, size) {
+    // Play explosion sound
+    if (SOUNDS) SOUNDS.explosion();
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+
+    // Main fireball
+    const fireMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.9 });
+    const fireGeo = new THREE.SphereGeometry(size * 0.5, 8, 8);
+    const fire = new THREE.Mesh(fireGeo, fireMat);
+    group.add(fire);
+
+    // Inner white flash
+    const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffaa, transparent: true, opacity: 1 });
+    const flashGeo = new THREE.SphereGeometry(size * 0.3, 6, 6);
+    const flash = new THREE.Mesh(flashGeo, flashMat);
+    group.add(flash);
+
+    // Light
+    const light = new THREE.PointLight(0xff6600, 3, size * 6);
+    group.add(light);
+
+    G.scene.add(group);
+    G.explosions.push({ group, life: 0.6, maxLife: 0.6, size });
+
+    // Debris particles
+    for (let p = 0; p < 10; p++) {
+        const pGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+        const pMat = new THREE.MeshBasicMaterial({
+            color: Math.random() > 0.5 ? 0xff8800 : 0xffcc00,
+            transparent: true, opacity: 1
+        });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.set(x, y, z);
+        G.scene.add(pMesh);
+        G.particles.push({
+            mesh: pMesh,
+            vx: (Math.random() - 0.5) * 15,
+            vy: Math.random() * 10 + 3,
+            vz: (Math.random() - 0.5) * 15,
+            life: 0.5 + Math.random() * 0.5,
+            maxLife: 1,
+            type: 'debris'
+        });
+    }
+}
+
+function createSmallExplosion(x, y, z) {
+    const flashGeo = new THREE.SphereGeometry(0.2, 4, 4);
+    const flashMat = new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 1 });
+    const flash = new THREE.Mesh(flashGeo, flashMat);
+    flash.position.set(x, y, z);
+    G.scene.add(flash);
+    G.particles.push({ mesh: flash, life: 0.2, maxLife: 0.2, type: 'flash' });
+}
+
+function createBounceParticles(x, y, z) {
+    for (let i = 0; i < 5; i++) {
+        const pGeo = new THREE.BoxGeometry(0.05, 0.05, 0.05);
+        const pMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 1 });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.set(x, y, z);
+        G.scene.add(pMesh);
+        G.particles.push({
+            mesh: pMesh,
+            vx: (Math.random() - 0.5) * 8,
+            vy: Math.random() * 4 + 1,
+            vz: (Math.random() - 0.5) * 8,
+            life: 0.3 + Math.random() * 0.2,
+            maxLife: 0.5,
+            type: 'spark'
+        });
+    }
+}
+
+function createSmokeParticle(x, y, z) {
+    const smokeGeo = new THREE.SphereGeometry(0.3, 6, 6);
+    const smokeMat = new THREE.MeshBasicMaterial({ 
+        color: 0x444444, 
+        transparent: true, 
+        opacity: 0.6 
+    });
+    const smoke = new THREE.Mesh(smokeGeo, smokeMat);
+    smoke.position.set(x + (Math.random() - 0.5) * 0.5, y, z + (Math.random() - 0.5) * 0.5);
+    G.scene.add(smoke);
+    G.particles.push({
+        mesh: smoke,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: 1 + Math.random() * 0.5,
+        vz: (Math.random() - 0.5) * 0.5,
+        life: 2 + Math.random(),
+        maxLife: 3,
+        type: 'smoke'
+    });
+}
+
+function updateExplosions(dt) {
+    for (let i = G.explosions.length - 1; i >= 0; i--) {
+        const exp = G.explosions[i];
+        exp.life -= dt;
+        const t = 1 - exp.life / exp.maxLife;
+
+        // Expand and fade
+        exp.group.scale.setScalar(1 + t * 2);
+        exp.group.children.forEach(c => {
+            if (c.material) c.material.opacity = Math.max(0, 1 - t * 1.5);
+            if (c.isLight) c.intensity = Math.max(0, 3 * (1 - t));
+        });
+
+        if (exp.life <= 0) {
+            G.scene.remove(exp.group);
+            G.explosions.splice(i, 1);
+        }
+    }
+}
+
+function updateParticles(dt) {
+    for (let i = G.particles.length - 1; i >= 0; i--) {
+        const p = G.particles[i];
+        p.life -= dt;
+
+        if (p.type === 'flash') {
+            p.mesh.material.opacity = p.life / p.maxLife;
+            p.mesh.scale.setScalar(1 + (1 - p.life / p.maxLife) * 2);
+        } else if (p.type === 'smoke') {
+            p.vy -= 0.5 * dt; // slight gravity
+            p.mesh.position.x += p.vx * dt;
+            p.mesh.position.y += p.vy * dt;
+            p.mesh.position.z += p.vz * dt;
+            p.mesh.material.opacity = Math.max(0, (p.life / p.maxLife) * 0.6);
+            p.mesh.scale.setScalar(1 + (1 - p.life / p.maxLife) * 2);
+        } else if (p.type === 'debris' || p.type === 'spark') {
+            p.vy -= 20 * dt; // gravity
+            p.mesh.position.x += p.vx * dt;
+            p.mesh.position.y += p.vy * dt;
+            p.mesh.position.z += p.vz * dt;
+            if (p.mesh.position.y < 0) p.mesh.position.y = 0;
+            p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
+            p.mesh.rotation.x += dt * 10;
+            p.mesh.rotation.z += dt * 8;
+        }
+
+        if (p.life <= 0) {
+            G.scene.remove(p.mesh);
+            G.particles.splice(i, 1);
+        }
+    }
+}
+
+// Start
+init();
+</script>
+</body>
+</html>

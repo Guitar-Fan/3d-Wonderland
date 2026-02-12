@@ -1,0 +1,3386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Fighter 3D</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #000; font-family: 'Rajdhani', sans-serif; }
+#gameCanvas { width: 100vw; height: 100vh; display: block; }
+.ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+.ui-overlay > * { pointer-events: auto; }
+.health-bar-container { width: 300px; height: 28px; background: rgba(0,0,0,0.7); border: 2px solid #555; border-radius: 4px; overflow: hidden; position: relative; }
+.health-bar { height: 100%; transition: width 0.3s ease; border-radius: 2px; }
+.health-bar.player { background: linear-gradient(180deg, #4ade80, #16a34a); }
+.health-bar.enemy { background: linear-gradient(180deg, #f87171, #dc2626); }
+.health-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: white; font-weight: 700; font-size: 14px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); font-family: 'Orbitron', monospace; }
+#mainMenu { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%); }
+.menu-btn { transition: all 0.3s ease; transform: scale(1); }
+.menu-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(59,130,246,0.5); }
+.furniture-item { cursor: grab; transition: all 0.2s; border: 2px solid transparent; }
+.furniture-item:hover { border-color: #3b82f6; transform: translateY(-2px); }
+.furniture-item.selected { border-color: #f59e0b; background: rgba(245,158,11,0.2); }
+.room-card { transition: all 0.2s; }
+.room-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+.glow-text { text-shadow: 0 0 10px rgba(59,130,246,0.8), 0 0 20px rgba(59,130,246,0.4); }
+.damage-flash { animation: damageFlash 0.3s ease; }
+@keyframes damageFlash { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+.combo-text { animation: comboPopup 1s ease forwards; position: absolute; pointer-events: none; }
+@keyframes comboPopup { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-60px) scale(1.5); opacity: 0; } }
+.slide-in { animation: slideIn 0.5s ease; }
+@keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+input[type="range"] { appearance: none; -webkit-appearance: none; height: 6px; background: #374151; border-radius: 3px; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; cursor: pointer; }
+.knockout-overlay { animation: knockoutAnim 2s ease; }
+@keyframes knockoutAnim { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes fightIntroAnim { 0% { transform: scale(3); opacity: 0; } 30% { transform: scale(1); opacity: 1; } 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.5); opacity: 0; } }
+.floating-healthbar { position: absolute; pointer-events: none; transform: translate(-50%, -50%); }
+.floating-healthbar-bg { width: 60px; height: 6px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 3px; overflow: hidden; }
+.floating-healthbar-fill { height: 100%; background: linear-gradient(90deg, #dc2626, #f87171); transition: width 0.2s; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Main Menu -->
+<div id="mainMenu" class="fixed inset-0 z-50 flex flex-col items-center justify-center">
+  <div class="text-center mb-12">
+    <h1 class="text-7xl font-black text-white mb-2 glow-text" style="font-family:'Orbitron',monospace;">HOUSE</h1>
+    <h1 class="text-8xl font-black text-red-500 mb-4" style="font-family:'Orbitron',monospace; text-shadow: 0 0 20px rgba(239,68,68,0.6);">FIGHTER</h1>
+    <p class="text-gray-400 text-xl">Customize. Fight. Survive.</p>
+  </div>
+  <div class="flex flex-col gap-4">
+    <button onclick="showCustomizer()" class="menu-btn px-12 py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white text-xl font-bold rounded-lg border border-blue-400/30">
+      🏠 CUSTOMIZE HOUSE
+    </button>
+    <button onclick="startFight('single')" class="menu-btn px-12 py-4 bg-gradient-to-r from-red-600 to-red-800 text-white text-xl font-bold rounded-lg border border-red-400/30">
+      ⚔️ SINGLE FIGHT
+    </button>
+    <button onclick="startFight('survival')" class="menu-btn px-12 py-4 bg-gradient-to-r from-purple-600 to-purple-800 text-white text-xl font-bold rounded-lg border border-purple-400/30">
+      🌊 SURVIVAL MODE
+    </button>
+    <button onclick="showControls()" class="menu-btn px-12 py-4 bg-gradient-to-r from-gray-600 to-gray-800 text-white text-xl font-bold rounded-lg border border-gray-400/30">
+      🎮 CONTROLS
+    </button>
+  </div>
+  <div id="controlsPanel" class="hidden mt-8 bg-gray-900/90 p-6 rounded-xl border border-gray-700 max-w-md">
+    <h3 class="text-xl font-bold text-white mb-4" style="font-family:'Orbitron',monospace;">CONTROLS</h3>
+    <div class="grid grid-cols-2 gap-2 text-gray-300">
+      <span class="text-blue-400 font-bold">W/A/S/D</span><span>Move</span>
+      <span class="text-blue-400 font-bold">Mouse</span><span>Look Around</span>
+      <span class="text-blue-400 font-bold">Left Click</span><span>Punch</span>
+      <span class="text-blue-400 font-bold">Right Click</span><span>Kick</span>
+      <span class="text-blue-400 font-bold">E</span><span>Pick Up / Throw</span>
+      <span class="text-blue-400 font-bold">Space</span><span>Block / Dodge</span>
+      <span class="text-blue-400 font-bold">Shift</span><span>Sprint</span>
+      <span class="text-blue-400 font-bold">ESC</span><span>Pause</span>
+    </div>
+  </div>
+</div>
+
+<!-- House Customizer -->
+<div id="customizer" class="fixed inset-0 z-40 hidden" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
+  <div class="flex h-full">
+    <!-- Left Panel - Rooms -->
+    <div class="w-80 bg-gray-900/95 border-r border-gray-700 overflow-y-auto p-4 flex flex-col">
+      <h2 class="text-xl font-bold text-white mb-3" style="font-family:'Orbitron',monospace;">ROOMS</h2>
+      <button onclick="addRoom()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg mb-3 font-bold transition text-sm">+ Add Room</button>
+      <div id="roomList" class="space-y-2 flex-1 overflow-y-auto"></div>
+    </div>
+
+    <!-- Center - 3D Preview -->
+    <div class="flex-1 relative">
+      <canvas id="previewCanvas" class="w-full h-full"></canvas>
+      <!-- Bottom controls -->
+      <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3">
+        <button onclick="resetCamera()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition">Reset View</button>
+        <button onclick="hideCustomizer()" class="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold transition">START FIGHT</button>
+      </div>
+      <!-- Connection hint -->
+      <div class="absolute top-4 left-4 bg-gray-900/80 px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700">
+        Drag to orbit &bull; Scroll to zoom &bull; Click to select furniture/doorways &bull; Drag arrows to move
+      </div>
+    </div>
+
+    <!-- Right Panel - Furniture -->
+    <div class="w-72 bg-gray-900/95 border-l border-gray-700 overflow-y-auto p-4 flex flex-col">
+      <h2 class="text-xl font-bold text-white mb-2" style="font-family:'Orbitron',monospace;">ITEMS</h2>
+      <div class="text-xs text-gray-400 mb-2">Add to: <span id="targetRoomName" class="text-blue-400 font-bold">Living Room</span></div>
+      <div class="flex flex-wrap gap-1 mb-3">
+        <button onclick="filterFurniture('all')" class="px-2 py-1 bg-blue-600 text-white rounded text-xs transition" id="filterAll">All</button>
+        <button onclick="filterFurniture('furniture')" class="px-2 py-1 bg-gray-700 text-white rounded text-xs transition" id="filterFurniture">Furniture</button>
+        <button onclick="filterFurniture('throwable')" class="px-2 py-1 bg-gray-700 text-white rounded text-xs transition" id="filterThrowable">Throwable</button>
+        <button onclick="filterFurniture('decor')" class="px-2 py-1 bg-gray-700 text-white rounded text-xs transition" id="filterDecor">Decor</button>
+      </div>
+      <div id="furnitureList" class="space-y-2 flex-1 overflow-y-auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Fight HUD -->
+<div id="fightHUD" class="ui-overlay hidden z-30">
+  <!-- Health Bars -->
+  <div class="flex justify-between items-start p-4">
+    <div class="slide-in">
+      <div class="text-white font-bold text-sm mb-1" style="font-family:'Orbitron',monospace;">YOU</div>
+      <div class="health-bar-container">
+        <div id="playerHealthBar" class="health-bar player" style="width:100%"></div>
+        <span id="playerHealthText" class="health-text">100</span>
+      </div>
+      <div class="flex gap-1 mt-1" id="playerStaminaBar">
+        <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+        <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+        <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+        <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+        <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+      </div>
+    </div>
+    <div class="text-center">
+      <div id="waveDisplay" class="text-3xl font-black text-purple-400 mb-1 hidden" style="font-family:'Orbitron',monospace;">WAVE <span id="waveNumber">1</span></div>
+      <div id="enemyCountDisplay" class="text-lg text-yellow-400 mb-1 hidden" style="font-family:'Orbitron',monospace;">ENEMIES: <span id="enemyCount">0</span></div>
+      <div id="roundTimer" class="text-4xl font-black text-white" style="font-family:'Orbitron',monospace;">99</div>
+      <div class="text-xs text-gray-400" id="modeLabel">ROUND 1</div>
+    </div>
+    <div class="slide-in text-right" id="singleEnemyHealth">
+      <div class="text-white font-bold text-sm mb-1" style="font-family:'Orbitron',monospace;">INTRUDER</div>
+      <div class="health-bar-container">
+        <div id="enemyHealthBar" class="health-bar enemy" style="width:100%"></div>
+        <span id="enemyHealthText" class="health-text">100</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Combo Display -->
+  <div id="comboDisplay" class="absolute top-1/3 left-1/2 transform -translate-x-1/2"></div>
+  
+  <!-- Action Prompts -->
+  <div id="actionPrompt" class="absolute bottom-24 left-1/2 transform -translate-x-1/2 text-yellow-400 text-lg font-bold hidden" style="font-family:'Orbitron',monospace; text-shadow: 0 0 10px rgba(250,204,21,0.5);"></div>
+  
+  <!-- Bottom HUD -->
+  <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4 items-center">
+    <div class="bg-gray-900/80 px-4 py-2 rounded-lg border border-gray-700 flex gap-3 text-sm">
+      <span class="text-gray-400">LMB <span class="text-white">Punch</span></span>
+      <span class="text-gray-400">RMB <span class="text-white">Kick</span></span>
+      <span class="text-gray-400">E <span class="text-white">Throw</span></span>
+      <span class="text-gray-400">Space <span class="text-white">Block</span></span>
+    </div>
+    <button id="camToggleBtn" onclick="document.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyV'}))" class="bg-gray-900/80 px-3 py-2 rounded-lg border border-gray-700 text-sm text-yellow-400 hover:text-yellow-300 cursor-pointer transition" style="font-family:'Orbitron',monospace;">3rd Person (V)</button>
+  </div>
+
+  <!-- Held item indicator -->
+  <div id="heldItemHUD" class="absolute bottom-20 right-4 bg-gray-900/80 px-4 py-2 rounded-lg border border-yellow-500 hidden">
+    <span class="text-yellow-400 text-sm font-bold" style="font-family:'Orbitron',monospace;">HOLDING: </span>
+    <span id="heldItemName" class="text-white text-sm"></span>
+  </div>
+
+  <!-- Crosshair -->
+  <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+    <div class="w-6 h-6 border-2 border-white/50 rounded-full flex items-center justify-center">
+      <div class="w-1 h-1 bg-white/80 rounded-full"></div>
+    </div>
+  </div>
+  
+  <!-- Fight Intro Ocupent -->
+  <div id="fightIntro" class="absolute inset-0 flex items-center justify-center pointer-events-none hidden">
+    <div id="fightIntroText" class="text-8xl font-black text-red-500" style="font-family:'Orbitron',monospace; text-shadow: 0 0 40px rgba(239,68,68,0.8), 0 0 80px rgba(239,68,68,0.4); animation: fightIntroAnim 2s ease forwards;">
+      FIGHT!
+    </div>
+  </div>
+  
+  <!-- Distance / enemy direction indicator -->
+  <div id="enemyIndicator" class="absolute bottom-36 left-1/2 transform -translate-x-1/2 text-gray-400 text-xs hidden" style="font-family:'Orbitron',monospace;">
+    <span id="enemyDistance"></span>
+  </div>
+</div>
+
+<!-- Game Over Overlay -->
+<div id="gameOverOverlay" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background: rgba(0,0,0,0.85);">
+  <div class="text-center knockout-overlay">
+    <div id="gameOverTitle" class="text-6xl font-black mb-4" style="font-family:'Orbitron',monospace;"></div>
+    <div id="gameOverSubtitle" class="text-xl text-gray-400 mb-8"></div>
+    <div class="flex gap-4 justify-center">
+      <button onclick="startFight(gameMode)" class="px-8 py-3 bg-red-600 hover:bg-red-500 text-white text-lg font-bold rounded-lg transition">REMATCH</button>
+      <button onclick="backToMenu()" class="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white text-lg font-bold rounded-lg transition">MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- Damage Overlay -->
+<div id="damageOverlay" class="fixed inset-0 z-20 pointer-events-none hidden" style="background: radial-gradient(ellipse at center, transparent 50%, rgba(255,0,0,0.4) 100%);"></div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// ====== GAME STATE ======
+const GameState = {
+  MENU: 'menu',
+  CUSTOMIZING: 'customizing',
+  FIGHTING: 'fighting',
+  GAMEOVER: 'gameover'
+};
+
+const GameMode = {
+  SINGLE: 'single',
+  SURVIVAL: 'survival'
+};
+
+let currentState = GameState.MENU;
+let gameMode = GameMode.SINGLE;
+let scene, camera, renderer, clock;
+let previewScene, previewCamera, previewRenderer;
+let playerHealth = 100, enemyHealth = 100;
+let playerStamina = 5;
+let comboCount = 0;
+let comboTimer = 0;
+let roundTimer = 99;
+let roundTimerInterval;
+let isBlocking = false;
+let heldObject = null;
+let heldObjectData = null;
+let gunAmmo = 0;
+let isGunEmpty = false;
+
+// Survival mode
+let currentWave = 1;
+let enemiesInWave = 1;
+let enemiesDefeated = 0;
+let waveStartDelay = 0;
+let isWaveActive = false;
+
+// Player
+let playerBody, playerMesh, playerPos = {x:0, y:1, z:5};
+let playerVelocity = {x:0, y:0, z:0};
+let playerRotation = {x:0, y:0};
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+let isSprinting = false;
+let playerAnimState = 'idle';
+let playerAnimTimer = 0;
+let isAttacking = false;
+let attackCooldown = 0;
+
+// Enemy (Intruder AI) - now supports multiple enemies
+let enemies = []; // Array of {mesh, limbs, pos, state, stateTimer, attackCooldown, animState, animTimer, targetPos, health}
+
+// House Config
+let rooms = [];
+let placedFurniture = [];
+let selectedRoom = 0;
+
+// Editor State
+let gridHelper = null;
+let currentFilter = 'all';
+let selectedFurniture = null; // {roomIdx, itemIdx, mesh}
+let selectedDoorway = null; // {connIdx}
+let translationGizmo = null;
+let isDraggingArrow = false;
+let dragStartMouse = {x: 0, y: 0};
+let dragStartPos = {x: 0, z: 0};
+let dragAxis = null; // 'x' or 'z'
+let doorwayConnections = []; // Persistent doorway data with offsets
+
+// 3rd person camera
+let thirdPersonView = false;
+
+// 3D Objects
+let furnitureObjects = [];
+let throwableObjects = [];
+let wallObjects = [];
+
+// Input
+let keys = {};
+let mouseDown = {left: false, right: false};
+let mouseDelta = {x: 0, y: 0};
+let isPointerLocked = false;
+
+// Limb references for animation
+let playerLimbs = {};
+let enemyLimbs = {};
+
+// ====== FURNITURE DATABASE ======
+const FURNITURE_DB = [
+  { id: 'sofa', name: 'Sofa', category: 'furniture', color: 0x4a6741, size: {x:2.5,y:1,z:1}, throwable: false, weight: 50 },
+  { id: 'table', name: 'Coffee Table', category: 'furniture', color: 0x8B4513, size: {x:1.5,y:0.5,z:0.8}, throwable: false, weight: 20 },
+  { id: 'chair', name: 'Chair', category: 'furniture', color: 0x654321, size: {x:0.6,y:1,z:0.6}, throwable: true, weight: 5, damage: 15 },
+  { id: 'lamp', name: 'Floor Lamp', category: 'decor', color: 0xf0e68c, size: {x:0.3,y:1.8,z:0.3}, throwable: true, weight: 2, damage: 8 },
+  { id: 'vase', name: 'Vase', category: 'throwable', color: 0x87ceeb, size: {x:0.25,y:0.5,z:0.25}, throwable: true, weight: 1, damage: 12 },
+  { id: 'book', name: 'Book Stack', category: 'throwable', color: 0x8b0000, size: {x:0.3,y:0.2,z:0.4}, throwable: true, weight: 1, damage: 5 },
+  { id: 'bottle', name: 'Bottle', category: 'throwable', color: 0x228b22, size: {x:0.1,y:0.35,z:0.1}, throwable: true, weight: 0.5, damage: 10 },
+  { id: 'tv', name: 'TV', category: 'furniture', color: 0x1a1a2e, size: {x:1.2,y:0.8,z:0.1}, throwable: false, weight: 15 },
+  { id: 'shelf', name: 'Bookshelf', category: 'furniture', color: 0x654321, size: {x:1.2,y:2,z:0.4}, throwable: false, weight: 40 },
+  { id: 'plant', name: 'Potted Plant', category: 'decor', color: 0x228b22, size: {x:0.4,y:0.8,z:0.4}, throwable: true, weight: 3, damage: 10 },
+  { id: 'stool', name: 'Bar Stool', category: 'furniture', color: 0x808080, size: {x:0.4,y:0.8,z:0.4}, throwable: true, weight: 3, damage: 12 },
+  { id: 'pillow', name: 'Throw Pillow', category: 'throwable', color: 0xff6b6b, size: {x:0.4,y:0.15,z:0.4}, throwable: true, weight: 0.3, damage: 2 },
+  { id: 'pan', name: 'Frying Pan', category: 'throwable', color: 0x333333, size: {x:0.35,y:0.05,z:0.35}, throwable: true, weight: 1, damage: 18 },
+  { id: 'bat', name: 'Baseball Bat', category: 'throwable', color: 0xdeb887, size: {x:0.08,y:0.9,z:0.08}, throwable: true, weight: 1, damage: 20 },
+  { id: 'dumbbell', name: 'Dumbbell', category: 'throwable', color: 0x555555, size: {x:0.15,y:0.15,z:0.4}, throwable: true, weight: 5, damage: 22 },
+  { id: 'rug', name: 'Area Rug', category: 'decor', color: 0x800020, size: {x:2.5,y:0.02,z:1.8}, throwable: false, weight: 5 },
+  { id: 'cabinet', name: 'Kitchen Cabinet', category: 'furniture', color: 0xf5f5dc, size: {x:1.0,y:1.0,z:0.5}, throwable: false, weight: 30 },
+  { id: 'bed', name: 'Bed', category: 'furniture', color: 0x4169e1, size: {x:2,y:0.6,z:2.5}, throwable: false, weight: 60 },
+  { id: 'handgun', name: 'Handgun', category: 'throwable', color: 0x2a2a2a, size: {x:0.15,y:0.1,z:0.25}, throwable: true, weight: 1, damage: 25, isGun: true, ammo: 8 },
+];
+
+// ====== DEFAULT ROOMS ======
+function initDefaultRooms() {
+  rooms = [
+    { name: 'Living Room', width: 10, depth: 10, height: 3.5, wallColor: 0xf5f0e8, floorColor: 0x8B7355, offsetX: 0, offsetZ: 0, rotation: 0, shape: 'rectangle', lighting: 0.9, items: [] },
+    { name: 'Kitchen', width: 8, depth: 7, height: 3, wallColor: 0xfaf0e6, floorColor: 0xd2b48c, offsetX: 10, offsetZ: 0, rotation: 0, shape: 'rectangle', lighting: 1.0, items: [] },
+  ];
+  // Add default furniture
+  rooms[0].items = [
+    { id: 'sofa', x: -2, z: -3, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'table', x: 0, z: -1, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'lamp', x: 3, z: -4, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'vase', x: 0.5, z: -1, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'chair', x: 2, z: 1, rot: 0.5, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'book', x: -3, z: 2, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'rug', x: 0, z: 0, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'handgun', x: -4, z: 3, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+  ];
+  rooms[1].items = [
+    { id: 'cabinet', x: 2, z: -2, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'pan', x: 1, z: -2.5, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'bottle', x: 2.5, z: -1, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+    { id: 'stool', x: -1, z: 0, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 },
+  ];
+}
+
+// ====== MENU FUNCTIONS ======
+function showControls() {
+  document.getElementById('controlsPanel').classList.toggle('hidden');
+}
+
+function showCustomizer() {
+  currentState = GameState.CUSTOMIZING;
+  document.getElementById('mainMenu').classList.add('hidden');
+  document.getElementById('customizer').classList.remove('hidden');
+  updateDoorwayConnections(); // Initialize doorway data
+  initPreview();
+  updateRoomList();
+  updateFurnitureList();
+}
+
+function hideCustomizer() {
+  document.getElementById('customizer').classList.add('hidden');
+  if (previewRenderer) {
+    cancelAnimationFrame(previewAnimId);
+  }
+  startFight('single');
+}
+
+function backToMenu() {
+  currentState = GameState.MENU;
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+  document.getElementById('fightHUD').classList.add('hidden');
+  document.getElementById('damageOverlay').classList.add('hidden');
+  document.getElementById('mainMenu').classList.remove('hidden');
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (roundTimerInterval) clearInterval(roundTimerInterval);
+  renderer.domElement.style.display = 'none';
+}
+
+// ====== CAD EDITOR FUNCTIONS ======
+// (Removed - using simplified inline controls)
+
+function updateDoorwayConnections() {
+  // Detect connections and merge with existing doorway data
+  const detectedConns = detectRoomConnections();
+  
+  // For each detected connection, see if we already have data for it
+  const newConns = [];
+  detectedConns.forEach(conn => {
+    const existing = doorwayConnections.find(dc => 
+      (dc.room1 === conn.room1 && dc.room2 === conn.room2) ||
+      (dc.room1 === conn.room2 && dc.room2 === conn.room1)
+    );
+    
+    // Calculate bounds for clamping
+    const r1 = rooms[conn.room1];
+    const r2 = rooms[conn.room2];
+    const b1 = getRoomBounds(r1);
+    const b2 = getRoomBounds(r2);
+    
+    let minBound, maxBound;
+    if (conn.direction === 'horizontal') {
+      minBound = Math.max(b1.minX, b2.minX);
+      maxBound = Math.min(b1.maxX, b2.maxX);
+    } else {
+      minBound = Math.max(b1.minZ, b2.minZ);
+      maxBound = Math.min(b1.maxZ, b2.maxZ);
+    }
+    
+    if (existing) {
+      // Update position using existing offset
+      const newX = conn.direction === 'horizontal' ? 
+        minBound + (maxBound - minBound) * existing.offset : 
+        conn.x;
+      const newZ = conn.direction === 'vertical' ? 
+        minBound + (maxBound - minBound) * existing.offset : 
+        conn.z;
+      
+      newConns.push({
+        ...conn,
+        offset: existing.offset,
+        x: newX,
+        z: newZ,
+        minBound,
+        maxBound
+      });
+    } else {
+      // New connection - default offset at center
+      newConns.push({
+        ...conn,
+        offset: 0.5,
+        minBound,
+        maxBound
+      });
+    }
+  });
+  
+  doorwayConnections = newConns;
+}
+
+// ====== ROOM MANAGEMENT ======
+function addRoom() {
+  const names = ['Bedroom', 'Bathroom', 'Garage', 'Study', 'Dining Room', 'Hallway', 'Basement', 'Attic'];
+  const usedNames = rooms.map(r => r.name);
+  let name = names.find(n => !usedNames.includes(n)) || 'Room ' + (rooms.length + 1);
+  
+  const lastRoom = rooms[rooms.length - 1];
+  const offsetX = lastRoom ? lastRoom.offsetX + lastRoom.width : 0;
+  
+  rooms.push({
+    name, width: 7, depth: 7, height: 3, 
+    wallColor: 0xe8e0d0, floorColor: 0x9e8e7e,
+    offsetX, offsetZ: 0, rotation: 0, shape: 'rectangle', lighting: 0.8, items: []
+  });
+  selectedRoom = rooms.length - 1;
+  updateDoorwayConnections();
+  updateRoomList();
+  rebuildPreview();
+}
+
+function removeRoom(idx) {
+  if (rooms.length <= 1) return;
+  rooms.splice(idx, 1);
+  if (selectedRoom >= rooms.length) selectedRoom = rooms.length - 1;
+  doorwayConnections = doorwayConnections.filter(dc => dc.room1 !== idx && dc.room2 !== idx);
+  // Adjust indices for remaining rooms
+  doorwayConnections.forEach(dc => {
+    if (dc.room1 > idx) dc.room1--;
+    if (dc.room2 > idx) dc.room2--;
+  });
+  updateRoomList();
+  rebuildPreview();
+}
+
+function selectRoom(idx) {
+  selectedRoom = idx;
+  const el = document.getElementById('targetRoomName');
+  if (el) el.textContent = rooms[idx].name;
+  selectedFurniture = null; // Clear furniture selection when switching rooms
+  selectedDoorway = null; // Clear doorway selection
+  updateRoomList();
+  rebuildPreview();
+}
+
+function updateRoomProp(ri, prop, val) {
+  rooms[ri][prop] = val;
+  if (['offsetX', 'offsetZ', 'width', 'depth', 'rotation'].includes(prop)) {
+    updateDoorwayConnections();
+  }
+  rebuildPreview();
+}
+
+function updateItemProp(ri, ii, prop, val) {
+  rooms[ri].items[ii][prop] = val;
+  rebuildPreview();
+}
+
+function removeItem(ri, ii) {
+  rooms[ri].items.splice(ii, 1);
+  if (selectedFurniture && selectedFurniture.roomIdx === ri && selectedFurniture.itemIdx === ii) {
+    selectedFurniture = null;
+  }
+  updateRoomList();
+  rebuildPreview();
+}
+
+function createTranslationGizmo() {
+  const group = new THREE.Group();
+  
+  // X axis (red arrow)
+  const xArrow = new THREE.ArrowHelper(
+    new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(0, 0, 0),
+    1.5,
+    0xff0000,
+    0.3,
+    0.2
+  );
+  xArrow.userData.axis = 'x';
+  group.add(xArrow);
+  
+  // Z axis (blue arrow)
+  const zArrow = new THREE.ArrowHelper(
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(0, 0, 0),
+    1.5,
+    0x0000ff,
+    0.3,
+    0.2
+  );
+  zArrow.userData.axis = 'z';
+  group.add(zArrow);
+  
+  return group;
+}
+
+function createDoorwayGizmo(direction) {
+  // Single arrow along the wall edge
+  const group = new THREE.Group();
+  const dir = new THREE.Vector3();
+  
+  if (direction === 'horizontal') {
+    dir.set(1, 0, 0); // Move along X
+  } else {
+    dir.set(0, 0, 1); // Move along Z
+  }
+  
+  const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), 2, 0xffff00, 0.4, 0.3);
+  arrow.userData.axis = direction === 'horizontal' ? 'x' : 'z';
+  group.add(arrow);
+  
+  // Add reverse arrow
+  const arrowBack = new THREE.ArrowHelper(dir.clone().negate(), new THREE.Vector3(0, 0, 0), 2, 0xffff00, 0.4, 0.3);
+  arrowBack.userData.axis = direction === 'horizontal' ? 'x' : 'z';
+  group.add(arrowBack);
+  
+  return group;
+}
+
+function updateRoomList() {
+  const container = document.getElementById('roomList');
+  container.innerHTML = '';
+  
+  rooms.forEach((room, i) => {
+    const isSelected = i === selectedRoom;
+    const card = document.createElement('div');
+    card.className = `p-3 rounded-lg cursor-pointer transition ${isSelected ? 'bg-blue-900/60 border border-blue-500' : 'bg-gray-800 border border-gray-700 hover:border-gray-500'}`;
+    card.onclick = () => selectRoom(i);
+    
+    let html = `
+      <div class="flex justify-between items-center">
+        <input class="bg-transparent text-white font-bold text-sm w-28 border-b border-transparent focus:border-blue-400 outline-none"
+          value="${room.name}" oninput="rooms[${i}].name=this.value;document.getElementById('targetRoomName').textContent=rooms[selectedRoom].name" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-1">
+          <span class="text-xs text-gray-500">${room.width}x${room.depth}m</span>
+          ${rooms.length > 1 ? `<button onclick="event.stopPropagation();removeRoom(${i})" class="text-red-400 hover:text-red-300 text-sm ml-1">✕</button>` : ''}
+        </div>
+      </div>`;
+    
+    if (isSelected) {
+      html += `
+      <div class="mt-3 space-y-2 text-xs">
+        <!-- Size -->
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="text-gray-500">W</label>
+            <input type="number" min="3" max="25" step="1" value="${room.width}"
+              class="w-full bg-gray-700 text-white px-2 py-1 rounded"
+              onclick="event.stopPropagation()"
+              onchange="updateRoomProp(${i},'width',+this.value);updateRoomList()">
+          </div>
+          <div>
+            <label class="text-gray-500">D</label>
+            <input type="number" min="3" max="25" step="1" value="${room.depth}"
+              class="w-full bg-gray-700 text-white px-2 py-1 rounded"
+              onclick="event.stopPropagation()"
+              onchange="updateRoomProp(${i},'depth',+this.value);updateRoomList()">
+          </div>
+          <div>
+            <label class="text-gray-500">H</label>
+            <input type="number" min="2.5" max="6" step="0.5" value="${room.height}"
+              class="w-full bg-gray-700 text-white px-2 py-1 rounded"
+              onclick="event.stopPropagation()"
+              onchange="updateRoomProp(${i},'height',+this.value)">
+          </div>
+        </div>
+        <!-- Position -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-gray-500">Pos X</label>
+            <input type="number" step="0.5" value="${room.offsetX}"
+              class="w-full bg-gray-700 text-white px-2 py-1 rounded"
+              onclick="event.stopPropagation()"
+              onchange="updateRoomProp(${i},'offsetX',+this.value)">
+          </div>
+          <div>
+            <label class="text-gray-500">Pos Z</label>
+            <input type="number" step="0.5" value="${room.offsetZ}"
+              class="w-full bg-gray-700 text-white px-2 py-1 rounded"
+              onclick="event.stopPropagation()"
+              onchange="updateRoomProp(${i},'offsetZ',+this.value)">
+          </div>
+        </div>
+        <!-- Shape & Rotation -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-gray-500">Shape</label>
+            <select class="w-full bg-gray-700 text-white px-2 py-1 rounded"
+              onclick="event.stopPropagation()"
+              onchange="updateRoomProp(${i},'shape',this.value)">
+              <option value="rectangle" ${room.shape==='rectangle'?'selected':''}>Rectangle</option>
+              <option value="circle" ${room.shape==='circle'?'selected':''}>Circle</option>
+              <option value="hexagon" ${room.shape==='hexagon'?'selected':''}>Hexagon</option>
+              <option value="octagon" ${room.shape==='octagon'?'selected':''}>Octagon</option>
+              <option value="l-shape" ${room.shape==='l-shape'?'selected':''}>L-Shape</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-gray-500">Rot °</label>
+            <input type="number" min="0" max="360" step="15" value="${Math.round(room.rotation*180/Math.PI)}"
+              class="w-full bg-gray-700 text-white px-2 py-1 rounded"
+              onclick="event.stopPropagation()"
+              onchange="updateRoomProp(${i},'rotation',+this.value*Math.PI/180)">
+          </div>
+        </div>
+        <!-- Colors -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-gray-500">Wall</label>
+            <input type="color" value="${'#'+room.wallColor.toString(16).padStart(6,'0')}"
+              class="w-full h-7 rounded cursor-pointer"
+              onclick="event.stopPropagation()"
+              oninput="updateRoomProp(${i},'wallColor',parseInt(this.value.slice(1),16))">
+          </div>
+          <div>
+            <label class="text-gray-500">Floor</label>
+            <input type="color" value="${'#'+room.floorColor.toString(16).padStart(6,'0')}"
+              class="w-full h-7 rounded cursor-pointer"
+              onclick="event.stopPropagation()"
+              oninput="updateRoomProp(${i},'floorColor',parseInt(this.value.slice(1),16))">
+          </div>
+        </div>
+        <!-- Lighting -->
+        <div>
+          <label class="text-gray-500">Light: ${Math.round(room.lighting*100)}%</label>
+          <input type="range" min="0.2" max="1.5" step="0.1" value="${room.lighting}" class="w-full"
+            onclick="event.stopPropagation()"
+            oninput="updateRoomProp(${i},'lighting',+this.value);updateRoomList()">
+        </div>
+        <!-- Items in this room -->
+        <div class="border-t border-gray-600 pt-2 mt-2">
+          <div class="text-gray-400 font-bold mb-1">Items (${room.items.length})</div>
+          ${room.items.map((item, ii) => {
+            const fDef = FURNITURE_DB.find(f => f.id === item.id);
+            if (!fDef) return '';
+            return `
+            <details class="bg-gray-700/50 rounded mb-1" onclick="event.stopPropagation()">
+              <summary class="px-2 py-1 cursor-pointer hover:bg-gray-600 flex justify-between items-center text-white">
+                ${fDef.name}
+                <button onclick="event.stopPropagation();removeItem(${i},${ii})" class="text-red-400 hover:text-red-300">✕</button>
+              </summary>
+              <div class="px-2 py-1 space-y-1">
+                <div class="grid grid-cols-2 gap-1">
+                  <div>
+                    <label class="text-gray-500">X</label>
+                    <input type="number" step="0.25" value="${item.x.toFixed(2)}"
+                      class="w-full bg-gray-800 text-white px-1 py-0.5 rounded"
+                      onchange="updateItemProp(${i},${ii},'x',+this.value)">
+                  </div>
+                  <div>
+                    <label class="text-gray-500">Z</label>
+                    <input type="number" step="0.25" value="${item.z.toFixed(2)}"
+                      class="w-full bg-gray-800 text-white px-1 py-0.5 rounded"
+                      onchange="updateItemProp(${i},${ii},'z',+this.value)">
+                  </div>
+                </div>
+                <div>
+                  <label class="text-gray-500">Rot °</label>
+                  <input type="number" min="0" max="360" step="15" value="${Math.round((item.rot||0)*180/Math.PI)}"
+                    class="w-full bg-gray-800 text-white px-1 py-0.5 rounded"
+                    onchange="updateItemProp(${i},${ii},'rot',+this.value*Math.PI/180)">
+                </div>
+              </div>
+            </details>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+    
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+  
+  // Update target room name in furniture panel
+  const el = document.getElementById('targetRoomName');
+  if (el && rooms[selectedRoom]) el.textContent = rooms[selectedRoom].name;
+}
+
+function updateFurnitureList(filter) {
+  if (filter !== undefined) currentFilter = filter;
+  
+  // Update filter button styles
+  ['All','Furniture','Throwable','Decor'].forEach(f => {
+    const btn = document.getElementById('filter' + f);
+    if (btn) {
+      const isActive = currentFilter === f.toLowerCase() || (currentFilter === 'all' && f === 'All');
+      btn.className = `px-2 py-1 ${isActive ? 'bg-blue-600' : 'bg-gray-700'} text-white rounded text-xs transition`;
+    }
+  });
+  
+  const container = document.getElementById('furnitureList');
+  container.innerHTML = '';
+  FURNITURE_DB.filter(f => currentFilter === 'all' || f.category === currentFilter).forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition';
+    div.innerHTML = `
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded flex-shrink-0" style="background:#${f.color.toString(16).padStart(6,'0')}"></div>
+        <div class="flex-1 min-w-0">
+          <div class="text-white text-xs font-bold truncate">${f.name}</div>
+          <div class="text-xs text-gray-500">${f.throwable ? 'DMG:'+f.damage : f.category}</div>
+        </div>
+        <button onclick="addFurnitureToRoom('${f.id}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs transition flex-shrink-0">+</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function filterFurniture(cat) { updateFurnitureList(cat); }
+
+function addFurnitureToRoom(id) {
+  if (selectedRoom < 0 || selectedRoom >= rooms.length) return;
+  const room = rooms[selectedRoom];
+  room.items.push({ id, x: 0, z: 0, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 });
+  updateRoomList();
+  rebuildPreview();
+}
+
+// ====== PREVIEW RENDERER ======
+let previewAnimId;
+
+function initPreview() {
+  const canvas = document.getElementById('previewCanvas');
+  previewScene = new THREE.Scene();
+  previewScene.background = new THREE.Color(0x1a1a2e);
+  previewScene.fog = new THREE.Fog(0x1a1a2e, 30, 60);
+  
+  previewCamera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  previewCamera.position.set(15, 15, 15);
+  previewCamera.lookAt(0, 0, 0);
+  
+  previewRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  previewRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  previewRenderer.shadowMap.enabled = true;
+  previewRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  
+  // Grid
+  gridHelper = new THREE.GridHelper(50, 100, 0x444444, 0x222222);
+  gridHelper.position.y = 0.01;
+  previewScene.add(gridHelper);
+  
+  // Orbit controls
+  let isDragging = false, prevMouse = {x:0,y:0};
+  let orbitAngle = {theta: 0.8, phi: 0.6};
+  let orbitDist = 20;
+  let orbitCenter = {x: 0, z: 0};
+  
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  
+  canvas.addEventListener('mousedown', (e) => { 
+    if (e.button !== 0) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, previewCamera);
+    
+    // Check if clicking on gizmo arrow
+    if (translationGizmo) {
+      const arrowIntersects = raycaster.intersectObjects(translationGizmo.children, true);
+      if (arrowIntersects.length > 0) {
+        let obj = arrowIntersects[0].object;
+        while (obj.parent && !obj.userData.axis) obj = obj.parent;
+        if (obj.userData.axis) {
+          isDraggingArrow = true;
+          dragAxis = obj.userData.axis;
+          dragStartMouse = {x: e.clientX, y: e.clientY};
+          if (selectedFurniture) {
+            const item = rooms[selectedFurniture.roomIdx].items[selectedFurniture.itemIdx];
+            dragStartPos = {x: item.x, z: item.z};
+          } else if (selectedDoorway) {
+            const conn = doorwayConnections[selectedDoorway.connIdx];
+            dragStartPos = {offset: conn.offset};
+          }
+          return;
+        }
+      }
+    }
+    
+    // Check if clicking on doorway frame
+    const doorwayObjs = [];
+    previewScene.traverse(obj => {
+      if (obj.userData.doorwayData) doorwayObjs.push(obj);
+    });
+    
+    const doorwayIntersects = raycaster.intersectObjects(doorwayObjs, true);
+    if (doorwayIntersects.length > 0) {
+      let obj = doorwayIntersects[0].object;
+      while (obj.parent && !obj.userData.doorwayData) obj = obj.parent;
+      if (obj.userData.doorwayData) {
+        selectedDoorway = obj.userData.doorwayData;
+        selectedFurniture = null;
+        rebuildPreview();
+        return;
+      }
+    }
+    
+    // Check if clicking on furniture
+    const furnitureObjs = [];
+    previewScene.traverse(obj => {
+      if (obj.userData.furnitureData) furnitureObjs.push(obj);
+    });
+    
+    const intersects = raycaster.intersectObjects(furnitureObjs, true);
+    if (intersects.length > 0) {
+      let obj = intersects[0].object;
+      while (obj.parent && !obj.userData.furnitureData) obj = obj.parent;
+      if (obj.userData.furnitureData) {
+        selectedFurniture = obj.userData.furnitureData;
+        rebuildPreview();
+        return;
+      }
+    }
+    
+    // Start orbit
+    isDragging = true; 
+    prevMouse = {x:e.clientX, y:e.clientY};
+  });
+  
+  canvas.addEventListener('mousemove', (e) => {
+    if (isDraggingArrow && selectedFurniture && dragAxis) {
+      const room = rooms[selectedFurniture.roomIdx];
+      const item = room.items[selectedFurniture.itemIdx];
+      
+      // Calculate movement based on camera orientation
+      const dx = (e.clientX - dragStartMouse.x) * 0.02;
+      const dy = (e.clientY - dragStartMouse.y) * 0.02;
+      
+      if (dragAxis === 'x') {
+        item.x = dragStartPos.x + dx;
+      } else if (dragAxis === 'z') {
+        item.z = dragStartPos.z - dy;
+      }
+      
+      // Clamp to room bounds
+      item.x = Math.max(-room.width/2 + 0.5, Math.min(room.width/2 - 0.5, item.x));
+      item.z = Math.max(-room.depth/2 + 0.5, Math.min(room.depth/2 - 0.5, item.z));
+      
+      rebuildPreview();
+      return;
+    }
+    
+    if (isDraggingArrow && selectedDoorway && dragAxis) {
+      const conn = doorwayConnections[selectedDoorway.connIdx];
+      
+      // Calculate offset change along the edge
+      const dx = (e.clientX - dragStartMouse.x) * 0.005;
+      const dy = (e.clientY - dragStartMouse.y) * 0.005;
+      
+      let delta = 0;
+      if (dragAxis === 'x') delta = dx;
+      else if (dragAxis === 'z') delta = -dy;
+      
+      conn.offset = Math.max(0.15, Math.min(0.85, dragStartPos.offset + delta));
+      
+      // Recalculate world position using bounds
+      if (conn.direction === 'horizontal') {
+        conn.x = conn.minBound + (conn.maxBound - conn.minBound) * conn.offset;
+      } else {
+        conn.z = conn.minBound + (conn.maxBound - conn.minBound) * conn.offset;
+      }
+      
+      rebuildPreview();
+      return;
+    }
+    
+    if (!isDragging) return;
+    orbitAngle.theta -= (e.clientX - prevMouse.x) * 0.01;
+    orbitAngle.phi = Math.max(0.1, Math.min(Math.PI/2 - 0.1, orbitAngle.phi - (e.clientY - prevMouse.y) * 0.01));
+    prevMouse = {x:e.clientX, y:e.clientY};
+  });
+  
+  canvas.addEventListener('mouseup', () => {
+    isDragging = false;
+    isDraggingArrow = false;
+    dragAxis = null;
+  });
+  
+  canvas.addEventListener('mouseleave', () => {
+    isDragging = false;
+    isDraggingArrow = false;
+    dragAxis = null;
+  });
+  
+  canvas.addEventListener('wheel', (e) => { 
+    e.preventDefault();
+    orbitDist = Math.max(5, Math.min(50, orbitDist + e.deltaY * 0.02));
+  });
+  
+  rebuildPreview();
+  
+  function animatePreview() {
+    previewAnimId = requestAnimationFrame(animatePreview);
+    // Center orbit on house
+    if (rooms.length > 0) {
+      orbitCenter.x = rooms.reduce((s,r) => s + r.offsetX + r.width/2, 0) / rooms.length;
+      orbitCenter.z = rooms.reduce((s,r) => s + r.offsetZ + r.depth/2, 0) / rooms.length;
+    }
+    previewCamera.position.x = orbitCenter.x + orbitDist * Math.sin(orbitAngle.theta) * Math.cos(orbitAngle.phi);
+    previewCamera.position.y = orbitDist * Math.sin(orbitAngle.phi);
+    previewCamera.position.z = orbitCenter.z + orbitDist * Math.cos(orbitAngle.theta) * Math.cos(orbitAngle.phi);
+    previewCamera.lookAt(orbitCenter.x, 1, orbitCenter.z);
+    previewRenderer.render(previewScene, previewCamera);
+  }
+  animatePreview();
+}
+
+function rebuildPreview() {
+  if (!previewScene) return;
+  // Clear scene except grid
+  const toRemove = [];
+  previewScene.children.forEach(c => { if (c !== gridHelper) toRemove.push(c); });
+  toRemove.forEach(c => previewScene.remove(c));
+  
+  translationGizmo = null;
+  
+  // Ambient light
+  previewScene.add(new THREE.AmbientLight(0x404060, 0.5));
+  
+  // Update doorway connections
+  updateDoorwayConnections();
+  const connections = doorwayConnections;
+  
+  // Build rooms with furniture tagging
+  rooms.forEach((room, ri) => {
+    buildRoomMesh(previewScene, room, ri === selectedRoom, connections);
+    
+    // Tag furniture with selection data
+    room.items.forEach((item, ii) => {
+      const fDef = FURNITURE_DB.find(f => f.id === item.id);
+      if (!fDef) return;
+      
+      const rot = room.rotation || 0;
+      const localX = item.x;
+      const localZ = item.z;
+      const rotatedX = localX * Math.cos(rot) - localZ * Math.sin(rot);
+      const rotatedZ = localX * Math.sin(rot) + localZ * Math.cos(rot);
+      const worldX = room.offsetX + room.width/2 + rotatedX;
+      const worldZ = room.offsetZ + room.depth/2 + rotatedZ;
+      
+      previewScene.traverse(obj => {
+        if (obj.userData && obj.userData.furnitureDef && obj.userData.furnitureDef.id === fDef.id) {
+          const dx = Math.abs(obj.position.x - worldX);
+          const dz = Math.abs(obj.position.z - worldZ);
+          if (dx < 0.1 && dz < 0.1 && !obj.userData.furnitureData) {
+            obj.userData.furnitureData = {roomIdx: ri, itemIdx: ii};
+          }
+        }
+      });
+    });
+  });
+  
+  // Doorway indicators with selection capability
+  connections.forEach((conn, connIdx) => {
+    const isSelected = selectedDoorway && selectedDoorway.connIdx === connIdx;
+    const indicator = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 2.2, 0.15),
+      new THREE.MeshBasicMaterial({ 
+        color: isSelected ? 0xffff00 : 0x00ff00, 
+        transparent: true, 
+        opacity: isSelected ? 0.4 : 0.2,
+        side: THREE.DoubleSide
+      })
+    );
+    indicator.position.set(conn.x, 1.1, conn.z);
+    indicator.userData.doorwayData = {connIdx};
+    previewScene.add(indicator);
+  });
+  
+  // Show gizmo for selected doorway
+  if (selectedDoorway && selectedDoorway.connIdx < doorwayConnections.length) {
+    const conn = doorwayConnections[selectedDoorway.connIdx];
+    translationGizmo = createDoorwayGizmo(conn.direction);
+    translationGizmo.position.set(conn.x, 1.1, conn.z);
+    previewScene.add(translationGizmo);
+  }
+  
+  // Show translation gizmo if furniture is selected
+  else if (selectedFurniture) {
+    const room = rooms[selectedFurniture.roomIdx];
+    const item = room.items[selectedFurniture.itemIdx];
+    const fDef = FURNITURE_DB.find(f => f.id === item.id);
+    
+    if (fDef && item) {
+      translationGizmo = createTranslationGizmo();
+      
+      const rot = room.rotation || 0;
+      const localX = item.x;
+      const localZ = item.z;
+      const rotatedX = localX * Math.cos(rot) - localZ * Math.sin(rot);
+      const rotatedZ = localX * Math.sin(rot) + localZ * Math.cos(rot);
+      const worldX = room.offsetX + room.width/2 + rotatedX;
+      const worldZ = room.offsetZ + room.depth/2 + rotatedZ;
+      const scaleY = item.scaleY || 1;
+      
+      translationGizmo.position.set(worldX, fDef.size.y * scaleY + 0.2, worldZ);
+      previewScene.add(translationGizmo);
+      
+      // Highlight selected furniture
+      previewScene.traverse(obj => {
+        if (obj.userData.furnitureData && 
+            obj.userData.furnitureData.roomIdx === selectedFurniture.roomIdx &&
+            obj.userData.furnitureData.itemIdx === selectedFurniture.itemIdx) {
+          if (obj.isMesh && obj.material) {
+            obj.material.emissive = new THREE.Color(0x444444);
+            obj.material.emissiveIntensity = 0.3;
+          }
+        }
+      });
+    }
+  }
+}
+
+// Detect adjacent rooms and where they connect
+function detectRoomConnections() {
+  const connections = [];
+  const threshold = 0.5; // Distance threshold for considering rooms adjacent
+  
+  for (let i = 0; i < rooms.length; i++) {
+    for (let j = i + 1; j < rooms.length; j++) {
+      const r1 = rooms[i];
+      const r2 = rooms[j];
+      
+      // Get room bounds (simplified for rectangles)
+      const b1 = getRoomBounds(r1);
+      const b2 = getRoomBounds(r2);
+      
+      // Check if rooms are adjacent
+      let doorway = null;
+      
+      // Check each edge of room 1 against room 2
+      // Right edge of r1 vs left edge of r2
+      if (Math.abs(b1.maxX - b2.minX) < threshold) {
+        const overlapZ = Math.max(0, Math.min(b1.maxZ, b2.maxZ) - Math.max(b1.minZ, b2.minZ));
+        if (overlapZ > 1.5) {
+          const z = (Math.max(b1.minZ, b2.minZ) + Math.min(b1.maxZ, b2.maxZ)) / 2;
+          doorway = { x: b1.maxX, z, dir: 'x', direction: 'vertical', room1: i, room2: j };
+        }
+      }
+      // Left edge of r1 vs right edge of r2
+      else if (Math.abs(b1.minX - b2.maxX) < threshold) {
+        const overlapZ = Math.max(0, Math.min(b1.maxZ, b2.maxZ) - Math.max(b1.minZ, b2.minZ));
+        if (overlapZ > 1.5) {
+          const z = (Math.max(b1.minZ, b2.minZ) + Math.min(b1.maxZ, b2.maxZ)) / 2;
+          doorway = { x: b1.minX, z, dir: 'x', direction: 'vertical', room1: i, room2: j };
+        }
+      }
+      // Back edge of r1 vs front edge of r2
+      else if (Math.abs(b1.maxZ - b2.minZ) < threshold) {
+        const overlapX = Math.max(0, Math.min(b1.maxX, b2.maxX) - Math.max(b1.minX, b2.minX));
+        if (overlapX > 1.5) {
+          const x = (Math.max(b1.minX, b2.minX) + Math.min(b1.maxX, b2.maxX)) / 2;
+          doorway = { x, z: b1.maxZ, dir: 'z', direction: 'horizontal', room1: i, room2: j };
+        }
+      }
+      // Front edge of r1 vs back edge of r2
+      else if (Math.abs(b1.minZ - b2.maxZ) < threshold) {
+        const overlapX = Math.max(0, Math.min(b1.maxX, b2.maxX) - Math.max(b1.minX, b2.minX));
+        if (overlapX > 1.5) {
+          const x = (Math.max(b1.minX, b2.minX) + Math.min(b1.maxX, b2.maxX)) / 2;
+          doorway = { x, z: b1.minZ, dir: 'z', direction: 'horizontal', room1: i, room2: j };
+        }
+      }
+      
+      if (doorway) {
+        connections.push(doorway);
+      }
+    }
+  }
+  
+  return connections;
+}
+
+// Get room bounds (simplified bounding box)
+function getRoomBounds(room) {
+  const {width, depth, offsetX, offsetZ, rotation} = room;
+  const rot = rotation || 0;
+  
+  // For non-rotated or small rotation, use simple AABB
+  if (Math.abs(rot) < 0.1) {
+    return {
+      minX: offsetX,
+      maxX: offsetX + width,
+      minZ: offsetZ,
+      maxZ: offsetZ + depth
+    };
+  }
+  
+  // For rotated rooms, calculate rotated corners
+  const cx = offsetX + width/2;
+  const cz = offsetZ + depth/2;
+  const corners = [
+    {x: -width/2, z: -depth/2},
+    {x: width/2, z: -depth/2},
+    {x: width/2, z: depth/2},
+    {x: -width/2, z: depth/2}
+  ];
+  
+  const rotatedCorners = corners.map(c => ({
+    x: cx + c.x * Math.cos(rot) - c.z * Math.sin(rot),
+    z: cz + c.x * Math.sin(rot) + c.z * Math.cos(rot)
+  }));
+  
+  return {
+    minX: Math.min(...rotatedCorners.map(c => c.x)),
+    maxX: Math.max(...rotatedCorners.map(c => c.x)),
+    minZ: Math.min(...rotatedCorners.map(c => c.z)),
+    maxZ: Math.max(...rotatedCorners.map(c => c.z))
+  };
+}
+
+// Helper function to create wall segments with doorway cutouts
+function createWallWithDoorway(group, material, doorways, roomCx, roomCz, roomW, roomD, roomH, wallSpec) {
+  const doorwayWidth = 1.2;
+  const doorwayHeight = 2.2;
+  
+  // Check if this wall has a doorway
+  let hasDoorway = false;
+  let doorwayPos = null;
+  
+  for (const dw of doorways) {
+    const globalX = dw.x;
+    const globalZ = dw.z;
+    
+    // Check if doorway is on this wall
+    if (wallSpec.dir === 'left' && Math.abs(globalX - roomCx + roomW/2) < 0.3) {
+      const localZ = globalZ - roomCz;
+      if (Math.abs(localZ) < roomD/2) {
+        hasDoorway = true;
+        doorwayPos = localZ;
+      }
+    } else if (wallSpec.dir === 'right' && Math.abs(globalX - roomCx - roomW/2) < 0.3) {
+      const localZ = globalZ - roomCz;
+      if (Math.abs(localZ) < roomD/2) {
+        hasDoorway = true;
+        doorwayPos = localZ;
+      }
+    } else if (wallSpec.dir === 'back' && Math.abs(globalZ - roomCz + roomD/2) < 0.3) {
+      const localX = globalX - roomCx;
+      if (Math.abs(localX) < roomW/2) {
+        hasDoorway = true;
+        doorwayPos = localX;
+      }
+    }
+  }
+  
+  if (!hasDoorway) {
+    // No doorway, create full wall
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(wallSpec.w, wallSpec.h, wallSpec.d),
+      material
+    );
+    wall.position.set(wallSpec.x, wallSpec.y, wallSpec.z);
+    wall.receiveShadow = true;
+    group.add(wall);
+  } else {
+    // Create wall segments around doorway
+    const isVerticalWall = wallSpec.d > wallSpec.w;
+    
+    if (isVerticalWall) {
+      // Left/Right wall (vertical)
+      const totalDepth = wallSpec.d;
+      const segment1Depth = (totalDepth/2 - doorwayWidth/2) + doorwayPos;
+      const segment2Depth = (totalDepth/2 + doorwayWidth/2) - doorwayPos;
+      
+      if (segment1Depth > 0.3) {
+        const seg1 = new THREE.Mesh(
+          new THREE.BoxGeometry(wallSpec.w, wallSpec.h, segment1Depth),
+          material
+        );
+        seg1.position.set(wallSpec.x, wallSpec.y, wallSpec.z - totalDepth/2 + segment1Depth/2);
+        seg1.receiveShadow = true;
+        group.add(seg1);
+      }
+      
+      if (segment2Depth > 0.3) {
+        const seg2 = new THREE.Mesh(
+          new THREE.BoxGeometry(wallSpec.w, wallSpec.h, segment2Depth),
+          material
+        );
+        seg2.position.set(wallSpec.x, wallSpec.y, wallSpec.z + totalDepth/2 - segment2Depth/2);
+        seg2.receiveShadow = true;
+        group.add(seg2);
+      }
+      
+      // Top segment above doorway
+      const topSeg = new THREE.Mesh(
+        new THREE.BoxGeometry(wallSpec.w, wallSpec.h - doorwayHeight, doorwayWidth),
+        material
+      );
+      topSeg.position.set(wallSpec.x, wallSpec.y + doorwayHeight/2, doorwayPos);
+      topSeg.receiveShadow = true;
+      group.add(topSeg);
+    } else {
+      // Back wall (horizontal)
+      const totalWidth = wallSpec.w;
+      const segment1Width = (totalWidth/2 - doorwayWidth/2) + doorwayPos;
+      const segment2Width = (totalWidth/2 + doorwayWidth/2) - doorwayPos;
+      
+      if (segment1Width > 0.3) {
+        const seg1 = new THREE.Mesh(
+          new THREE.BoxGeometry(segment1Width, wallSpec.h, wallSpec.d),
+          material
+        );
+        seg1.position.set(wallSpec.x - totalWidth/2 + segment1Width/2, wallSpec.y, wallSpec.z);
+        seg1.receiveShadow = true;
+        group.add(seg1);
+      }
+      
+      if (segment2Width > 0.3) {
+        const seg2 = new THREE.Mesh(
+          new THREE.BoxGeometry(segment2Width, wallSpec.h, wallSpec.d),
+          material
+        );
+        seg2.position.set(wallSpec.x + totalWidth/2 - segment2Width/2, wallSpec.y, wallSpec.z);
+        seg2.receiveShadow = true;
+        group.add(seg2);
+      }
+      
+      // Top segment above doorway
+      const topSeg = new THREE.Mesh(
+        new THREE.BoxGeometry(doorwayWidth, wallSpec.h - doorwayHeight, wallSpec.d),
+        material
+      );
+      topSeg.position.set(doorwayPos, wallSpec.y + doorwayHeight/2, wallSpec.z);
+      topSeg.receiveShadow = true;
+      group.add(topSeg);
+    }
+    
+    // Add doorway frame
+    const frameColor = 0x654321;
+    const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, roughness: 0.7 });
+    
+    // Frame pieces
+    const frameThickness = 0.1;
+    const frameDepth = 0.2;
+    
+    // Left post
+    const leftPost = new THREE.Mesh(
+      new THREE.BoxGeometry(frameThickness, doorwayHeight, frameDepth),
+      frameMat
+    );
+    if (isVerticalWall) {
+      leftPost.position.set(wallSpec.x, doorwayHeight/2, doorwayPos - doorwayWidth/2);
+    } else {
+      leftPost.position.set(doorwayPos - doorwayWidth/2, doorwayHeight/2, wallSpec.z);
+    }
+    group.add(leftPost);
+    
+    // Right post
+    const rightPost = new THREE.Mesh(
+      new THREE.BoxGeometry(frameThickness, doorwayHeight, frameDepth),
+      frameMat
+    );
+    if (isVerticalWall) {
+      rightPost.position.set(wallSpec.x, doorwayHeight/2, doorwayPos + doorwayWidth/2);
+    } else {
+      rightPost.position.set(doorwayPos + doorwayWidth/2, doorwayHeight/2, wallSpec.z);
+    }
+    group.add(rightPost);
+    
+    // Top frame
+    const topFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(isVerticalWall ? frameThickness : doorwayWidth, frameThickness, isVerticalWall ? doorwayWidth : frameDepth),
+      frameMat
+    );
+    if (isVerticalWall) {
+      topFrame.position.set(wallSpec.x, doorwayHeight, doorwayPos);
+    } else {
+      topFrame.position.set(doorwayPos, doorwayHeight, wallSpec.z);
+    }
+    group.add(topFrame);
+  }
+}
+
+function buildRoomMesh(targetScene, room, highlight, connections) {
+  const {width, depth, height, wallColor, floorColor, offsetX, offsetZ, rotation, shape, lighting, items} = room;
+  const cx = offsetX + width/2;
+  const cz = offsetZ + depth/2;
+  const rot = rotation || 0;
+  const roomShape = shape || 'rectangle';
+  
+  // Get room index
+  const roomIndex = rooms.indexOf(room);
+  
+  // Find doorways for this room
+  const doorways = connections ? connections.filter(c => c.room1 === roomIndex || c.room2 === roomIndex) : [];
+  
+  // Create room group for rotation
+  const roomGroup = new THREE.Group();
+  roomGroup.position.set(cx, 0, cz);
+  roomGroup.rotation.y = rot;
+  
+  // Floor and walls based on shape
+  const floorMat = new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.8 });
+  const wallMat = new THREE.MeshStandardMaterial({ 
+    color: wallColor, roughness: 0.6, 
+    side: THREE.DoubleSide 
+  });
+  
+  if (roomShape === 'circle') {
+    // Circular room
+    const radius = width / 2;
+    const floorGeo = new THREE.CylinderGeometry(radius, radius, 0.15, 32);
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    roomGroup.add(floor);
+    
+    // Circular wall
+    const wallGeo = new THREE.CylinderGeometry(radius, radius, height, 32, 1, true);
+    const wall = new THREE.Mesh(wallGeo, wallMat);
+    wall.position.y = height / 2;
+    wall.receiveShadow = true;
+    roomGroup.add(wall);
+  } else if (roomShape === 'hexagon' || roomShape === 'octagon') {
+    // Polygon room
+    const sides = roomShape === 'hexagon' ? 6 : 8;
+    const radius = width / 2;
+    
+    const floorShape = new THREE.Shape();
+    for (let i = 0; i < sides; i++) {
+      const angle = (i / sides) * Math.PI * 2;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      if (i === 0) floorShape.moveTo(x, z);
+      else floorShape.lineTo(x, z);
+    }
+    floorShape.closePath();
+    
+    const floorGeo = new THREE.ExtrudeGeometry(floorShape, { depth: 0.15, bevelEnabled: false });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    roomGroup.add(floor);
+    
+    // Walls for polygon
+    for (let i = 0; i < sides; i++) {
+      const angle1 = (i / sides) * Math.PI * 2;
+      const angle2 = ((i + 1) / sides) * Math.PI * 2;
+      const x1 = Math.cos(angle1) * radius;
+      const z1 = Math.sin(angle1) * radius;
+      const x2 = Math.cos(angle2) * radius;
+      const z2 = Math.sin(angle2) * radius;
+      const wallWidth = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+      const wallAngle = Math.atan2(z2 - z1, x2 - x1);
+      
+      const wallMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(wallWidth, height, 0.15),
+        wallMat
+      );
+      wallMesh.position.set((x1 + x2) / 2, height / 2, (z1 + z2) / 2);
+      wallMesh.rotation.y = wallAngle;
+      wallMesh.receiveShadow = true;
+      roomGroup.add(wallMesh);
+    }
+  } else if (roomShape === 'l-shape') {
+    // L-shaped room
+    const w1 = width, d1 = depth * 0.6;
+    const w2 = width * 0.6, d2 = depth * 0.4;
+    
+    // Floor part 1
+    const floor1 = new THREE.Mesh(
+      new THREE.BoxGeometry(w1, 0.15, d1),
+      floorMat
+    );
+    floor1.position.set(0, 0, -d2/2);
+    floor1.receiveShadow = true;
+    roomGroup.add(floor1);
+    
+    // Floor part 2
+    const floor2 = new THREE.Mesh(
+      new THREE.BoxGeometry(w2, 0.15, d2),
+      floorMat
+    );
+    floor2.position.set(-w1/2 + w2/2, 0, d1/2);
+    floor2.receiveShadow = true;
+    roomGroup.add(floor2);
+    
+    // Walls for L-shape
+    const walls = [
+      {w: w1, h: height, d: 0.15, x: 0, y: height/2, z: -d1/2 - d2/2, ry: 0},
+      {w: 0.15, h: height, d: d1, x: -w1/2, y: height/2, z: -d2/2, ry: 0},
+      {w: 0.15, h: height, d: d1, x: w1/2, y: height/2, z: -d2/2, ry: 0},
+      {w: w2, h: height, d: 0.15, x: -w1/2 + w2/2, y: height/2, z: d1/2 + d2/2, ry: 0},
+      {w: 0.15, h: height, d: d2, x: -w1/2, y: height/2, z: d1/2, ry: 0},
+      {w: w1 - w2, h: height, d: 0.15, x: w2/2, y: height/2, z: d1/2 - d2/2, ry: 0},
+      {w: 0.15, h: height, d: d2, x: w2 - w1/2, y: height/2, z: d1/2, ry: 0},
+    ];
+    walls.forEach(w => {
+      const wall = new THREE.Mesh(
+        new THREE.BoxGeometry(w.w, w.h, w.d),
+        wallMat
+      );
+      wall.position.set(w.x, w.y, w.z);
+      wall.rotation.y = w.ry;
+      wall.receiveShadow = true;
+      roomGroup.add(wall);
+    });
+  } else if (roomShape === 'custom' && room.customPoints && room.customPoints.length >= 3) {
+    // Custom polygon shape
+    const points = room.customPoints;
+    
+    // Create floor shape
+    const floorShape = new THREE.Shape();
+    points.forEach((p, i) => {
+      if (i === 0) floorShape.moveTo(p.x - width/2, p.z - depth/2);
+      else floorShape.lineTo(p.x - width/2, p.z - depth/2);
+    });
+    floorShape.closePath();
+    
+    const floorGeo = new THREE.ExtrudeGeometry(floorShape, { depth: 0.15, bevelEnabled: false });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    roomGroup.add(floor);
+    
+    // Create walls for custom shape
+    for (let i = 0; i < points.length; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % points.length];
+      const x1 = p1.x - width/2;
+      const z1 = p1.z - depth/2;
+      const x2 = p2.x - width/2;
+      const z2 = p2.z - depth/2;
+      const wallWidth = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+      const wallAngle = Math.atan2(z2 - z1, x2 - x1);
+      
+      const wallMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(wallWidth, height, 0.15),
+        wallMat
+      );
+      wallMesh.position.set((x1 + x2) / 2, height / 2, (z1 + z2) / 2);
+      wallMesh.rotation.y = wallAngle;
+      wallMesh.receiveShadow = true;
+      roomGroup.add(wallMesh);
+    }
+  } else {
+    // Rectangle (default)
+    const floorGeo = new THREE.BoxGeometry(width, 0.15, depth);
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.position.set(0, 0, 0);
+    floor.receiveShadow = true;
+    roomGroup.add(floor);
+    
+    // Create walls with doorway cutouts
+    createWallWithDoorway(roomGroup, wallMat, doorways, cx, cz, width, depth, height, 
+      {w: width, h: height, d: 0.15, x: 0, y: height/2, z: -depth/2, dir: 'back'});
+    createWallWithDoorway(roomGroup, wallMat, doorways, cx, cz, width, depth, height,
+      {w: 0.15, h: height, d: depth, x: -width/2, y: height/2, z: 0, dir: 'left'});
+    createWallWithDoorway(roomGroup, wallMat, doorways, cx, cz, width, depth, height,
+      {w: 0.15, h: height, d: depth, x: width/2, y: height/2, z: 0, dir: 'right'});
+  }
+  
+  // Room light
+  const light = new THREE.PointLight(0xfff5e6, lighting * 1.5, width * 2.5);
+  light.position.set(0, height - 0.3, 0);
+  light.castShadow = true;
+  roomGroup.add(light);
+  
+  // Light fixture visual
+  const fixGeo = new THREE.CylinderGeometry(0.15, 0.25, 0.1, 8);
+  const fixMat = new THREE.MeshStandardMaterial({ color: 0xffffee, emissive: 0xffffaa, emissiveIntensity: lighting });
+  const fixture = new THREE.Mesh(fixGeo, fixMat);
+  fixture.position.set(0, height - 0.1, 0);
+  roomGroup.add(fixture);
+  
+  targetScene.add(roomGroup);
+  
+  // Selection highlight
+  if (highlight) {
+    const hlSize = roomShape === 'circle' ? width : Math.max(width, depth);
+    const hlGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(hlSize + 0.1, height + 0.1, hlSize + 0.1));
+    const hlMat = new THREE.LineBasicMaterial({ color: 0x3b82f6 });
+    const hl = new THREE.LineSegments(hlGeo, hlMat);
+    hl.position.set(cx, height/2, cz);
+    targetScene.add(hl);
+  }
+  
+  // Furniture items
+  items.forEach(item => {
+    const fDef = FURNITURE_DB.find(f => f.id === item.id);
+    if (!fDef) return;
+    const fMesh = createFurnitureMesh(fDef);
+    
+    // Apply scale
+    const scaleX = item.scaleX || 1;
+    const scaleY = item.scaleY || 1;
+    const scaleZ = item.scaleZ || 1;
+    fMesh.scale.set(scaleX, scaleY, scaleZ);
+    
+    // Apply room rotation to furniture position
+    const localX = item.x;
+    const localZ = item.z;
+    const rotatedX = localX * Math.cos(rot) - localZ * Math.sin(rot);
+    const rotatedZ = localX * Math.sin(rot) + localZ * Math.cos(rot);
+    
+    fMesh.position.set(
+      cx + rotatedX,
+      fDef.size.y * scaleY / 2 + 0.08,
+      cz + rotatedZ
+    );
+    fMesh.rotation.y = (item.rot || 0) + rot;
+    fMesh.castShadow = true;
+    targetScene.add(fMesh);
+  });
+}
+
+function createFurnitureMesh(fDef) {
+  const group = new THREE.Group();
+  
+  if (fDef.id === 'sofa') {
+    // Seat
+    const seat = new THREE.Mesh(
+      new THREE.BoxGeometry(fDef.size.x, 0.4, fDef.size.z),
+      new THREE.MeshStandardMaterial({ color: fDef.color, roughness: 0.9 })
+    );
+    seat.position.y = -0.1;
+    group.add(seat);
+    // Back
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(fDef.size.x, 0.5, 0.2),
+      new THREE.MeshStandardMaterial({ color: fDef.color, roughness: 0.9 })
+    );
+    back.position.set(0, 0.2, -fDef.size.z/2 + 0.1);
+    group.add(back);
+    // Arms
+    for (let s = -1; s <= 1; s += 2) {
+      const arm = new THREE.Mesh(
+        new THREE.BoxGeometry(0.15, 0.35, fDef.size.z),
+        new THREE.MeshStandardMaterial({ color: fDef.color * 0.9, roughness: 0.9 })
+      );
+      arm.position.set(s * (fDef.size.x/2 - 0.075), 0.05, 0);
+      group.add(arm);
+    }
+  } else if (fDef.id === 'lamp') {
+    // Pole
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 1.4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x888888 })
+    );
+    pole.position.y = -0.2;
+    group.add(pole);
+    // Shade
+    const shade = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.25, 0.3, 8),
+      new THREE.MeshStandardMaterial({ color: fDef.color, emissive: 0x443300, emissiveIntensity: 0.3, side: THREE.DoubleSide })
+    );
+    shade.position.y = 0.55;
+    group.add(shade);
+    // Base
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.18, 0.05, 8),
+      new THREE.MeshStandardMaterial({ color: 0x555555 })
+    );
+    base.position.y = -0.88;
+    group.add(base);
+  } else if (fDef.id === 'bed') {
+    // Mattress
+    const mat = new THREE.Mesh(
+      new THREE.BoxGeometry(fDef.size.x, 0.25, fDef.size.z),
+      new THREE.MeshStandardMaterial({ color: fDef.color, roughness: 0.95 })
+    );
+    group.add(mat);
+    // Headboard
+    const hb = new THREE.Mesh(
+      new THREE.BoxGeometry(fDef.size.x, 0.6, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x5c3317 })
+    );
+    hb.position.set(0, 0.35, -fDef.size.z/2);
+    group.add(hb);
+    // Pillow
+    const pil = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.1, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0xffffff })
+    );
+    pil.position.set(0, 0.18, -fDef.size.z/2 + 0.4);
+    group.add(pil);
+  } else if (fDef.id === 'tv') {
+    // Screen
+    const screen = new THREE.Mesh(
+      new THREE.BoxGeometry(fDef.size.x, fDef.size.y, fDef.size.z),
+      new THREE.MeshStandardMaterial({ color: fDef.color, emissive: 0x000033, emissiveIntensity: 0.2 })
+    );
+    group.add(screen);
+    // Stand
+    const stand = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.05, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x333333 })
+    );
+    stand.position.y = -fDef.size.y/2 - 0.025;
+    group.add(stand);
+  } else if (fDef.id === 'plant') {
+    // Pot
+    const pot = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.12, 0.3, 8),
+      new THREE.MeshStandardMaterial({ color: 0xb5651d })
+    );
+    pot.position.y = -0.25;
+    group.add(pot);
+    // Foliage
+    const foliage = new THREE.Mesh(
+      new THREE.SphereGeometry(0.25, 8, 8),
+      new THREE.MeshStandardMaterial({ color: fDef.color })
+    );
+    foliage.position.y = 0.1;
+    group.add(foliage);
+  } else if (fDef.id === 'handgun') {
+    // Gun body
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.12, 0.18),
+      new THREE.MeshStandardMaterial({ color: fDef.color, roughness: 0.3, metalness: 0.7 })
+    );
+    body.position.set(0, 0, -0.03);
+    group.add(body);
+    // Barrel
+    const barrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.08, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.2, metalness: 0.9 })
+    );
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0.03, -0.15);
+    group.add(barrel);
+    // Grip
+    const grip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.08, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.8 })
+    );
+    grip.position.set(0, -0.08, 0.02);
+    group.add(grip);
+  } else {
+    // Default box
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(fDef.size.x, fDef.size.y, fDef.size.z),
+      new THREE.MeshStandardMaterial({ color: fDef.color, roughness: 0.7 })
+    );
+    group.add(mesh);
+  }
+  
+  group.userData = { furnitureDef: fDef };
+  return group;
+}
+
+// ====== HUMANOID CHARACTER BUILDER ======
+function createHumanoid(color, isEnemy) {
+  const group = new THREE.Group();
+  const limbs = {};
+  const skinColor = isEnemy ? 0x8b6f5c : 0xe8b89d;
+  const clothColor = color;
+  
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.18, 12, 12);
+  const headMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
+  limbs.head = new THREE.Mesh(headGeo, headMat);
+  limbs.head.position.y = 1.65;
+  limbs.head.castShadow = true;
+  group.add(limbs.head);
+  
+  // Eyes
+  if (isEnemy) {
+    for (let s = -1; s <= 1; s += 2) {
+      const eye = new THREE.Mesh(
+        new THREE.SphereGeometry(0.03, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 })
+      );
+      eye.position.set(s * 0.07, 1.67, 0.15);
+      group.add(eye);
+    }
+    // Mask/hood
+    const hood = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x1a1a1a })
+    );
+    hood.position.y = 1.65;
+    group.add(hood);
+  }
+  
+  // Neck
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.06, 0.1, 8),
+    new THREE.MeshStandardMaterial({ color: skinColor })
+  );
+  neck.position.y = 1.48;
+  group.add(neck);
+  
+  // Torso
+  const torsoGeo = new THREE.BoxGeometry(0.45, 0.55, 0.25);
+  limbs.torso = new THREE.Mesh(torsoGeo, new THREE.MeshStandardMaterial({ color: clothColor, roughness: 0.8 }));
+  limbs.torso.position.y = 1.16;
+  limbs.torso.castShadow = true;
+  group.add(limbs.torso);
+  
+  // Lower torso
+  const lowerTorso = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.25, 0.22),
+    new THREE.MeshStandardMaterial({ color: isEnemy ? 0x1a1a2e : 0x3b5998 })
+  );
+  lowerTorso.position.y = 0.82;
+  group.add(lowerTorso);
+  
+  // Arms
+  const armMat = new THREE.MeshStandardMaterial({ color: clothColor, roughness: 0.8 });
+  const handMat = new THREE.MeshStandardMaterial({ color: skinColor });
+  
+  // Right arm
+  limbs.rightArm = new THREE.Group();
+  const rUpperArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.12), armMat);
+  rUpperArm.position.y = -0.17;
+  limbs.rightArm.add(rUpperArm);
+  
+  limbs.rightForearm = new THREE.Group();
+  const rForearm = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.3, 0.10), armMat);
+  rForearm.position.y = -0.15;
+  limbs.rightForearm.add(rForearm);
+  const rHand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), handMat);
+  rHand.position.y = -0.32;
+  limbs.rightForearm.add(rHand);
+  limbs.rightForearm.position.y = -0.35;
+  limbs.rightArm.add(limbs.rightForearm);
+  
+  limbs.rightArm.position.set(-0.3, 1.38, 0);
+  group.add(limbs.rightArm);
+  
+  // Left arm
+  limbs.leftArm = new THREE.Group();
+  const lUpperArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.12), armMat);
+  lUpperArm.position.y = -0.17;
+  limbs.leftArm.add(lUpperArm);
+  
+  limbs.leftForearm = new THREE.Group();
+  const lForearm = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.3, 0.10), armMat);
+  lForearm.position.y = -0.15;
+  limbs.leftForearm.add(lForearm);
+  const lHand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), handMat);
+  lHand.position.y = -0.32;
+  limbs.leftForearm.add(lHand);
+  limbs.leftForearm.position.y = -0.35;
+  limbs.leftArm.add(limbs.leftForearm);
+  
+  limbs.leftArm.position.set(0.3, 1.38, 0);
+  group.add(limbs.leftArm);
+  
+  // Legs
+  const legMat = new THREE.MeshStandardMaterial({ color: isEnemy ? 0x1a1a2e : 0x2d4a7a, roughness: 0.8 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: isEnemy ? 0x111111 : 0x4a3728 });
+  
+  // Right leg
+  limbs.rightLeg = new THREE.Group();
+  const rThigh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.35, 0.14), legMat);
+  rThigh.position.y = -0.17;
+  limbs.rightLeg.add(rThigh);
+  
+  limbs.rightShin = new THREE.Group();
+  const rShin = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.12), legMat);
+  rShin.position.y = -0.17;
+  limbs.rightShin.add(rShin);
+  const rFoot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.22), shoeMat);
+  rFoot.position.set(0, -0.36, 0.04);
+  limbs.rightShin.add(rFoot);
+  limbs.rightShin.position.y = -0.35;
+  limbs.rightLeg.add(limbs.rightShin);
+  
+  limbs.rightLeg.position.set(-0.12, 0.7, 0);
+  group.add(limbs.rightLeg);
+  
+  // Left leg
+  limbs.leftLeg = new THREE.Group();
+  const lThigh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.35, 0.14), legMat);
+  lThigh.position.y = -0.17;
+  limbs.leftLeg.add(lThigh);
+  
+  limbs.leftShin = new THREE.Group();
+  const lShin = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.12), legMat);
+  lShin.position.y = -0.17;
+  limbs.leftShin.add(lShin);
+  const lFoot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.22), shoeMat);
+  lFoot.position.set(0, -0.36, 0.04);
+  limbs.leftShin.add(lFoot);
+  limbs.leftShin.position.y = -0.35;
+  limbs.leftLeg.add(limbs.leftShin);
+  
+  limbs.leftLeg.position.set(0.12, 0.7, 0);
+  group.add(limbs.leftLeg);
+  
+  group.castShadow = true;
+  return { mesh: group, limbs };
+}
+
+// ====== ANIMATION SYSTEM ======
+function animateCharacter(limbs, state, timer, dt) {
+  const t = timer;
+  
+  switch(state) {
+    case 'idle':
+      // Subtle breathing
+      limbs.rightArm.rotation.x = Math.sin(t * 1.5) * 0.03;
+      limbs.leftArm.rotation.x = Math.sin(t * 1.5 + 0.5) * 0.03;
+      limbs.rightArm.rotation.z = 0.15;
+      limbs.leftArm.rotation.z = -0.15;
+      limbs.rightForearm.rotation.x = -0.3;
+      limbs.leftForearm.rotation.x = -0.3;
+      limbs.rightLeg.rotation.x = 0;
+      limbs.leftLeg.rotation.x = 0;
+      limbs.rightShin.rotation.x = 0;
+      limbs.leftShin.rotation.x = 0;
+      limbs.torso.position.y = 1.16 + Math.sin(t * 2) * 0.01;
+      break;
+      
+    case 'walking':
+      const ws = 6;
+      limbs.rightLeg.rotation.x = Math.sin(t * ws) * 0.5;
+      limbs.leftLeg.rotation.x = Math.sin(t * ws + Math.PI) * 0.5;
+      limbs.rightShin.rotation.x = Math.max(0, Math.sin(t * ws + 0.5)) * -0.4;
+      limbs.leftShin.rotation.x = Math.max(0, Math.sin(t * ws + Math.PI + 0.5)) * -0.4;
+      limbs.rightArm.rotation.x = Math.sin(t * ws + Math.PI) * 0.4;
+      limbs.leftArm.rotation.x = Math.sin(t * ws) * 0.4;
+      limbs.rightArm.rotation.z = 0.1;
+      limbs.leftArm.rotation.z = -0.1;
+      limbs.rightForearm.rotation.x = -0.4;
+      limbs.leftForearm.rotation.x = -0.4;
+      limbs.torso.rotation.y = Math.sin(t * ws) * 0.05;
+      limbs.torso.position.y = 1.16 + Math.abs(Math.sin(t * ws)) * 0.03;
+      break;
+      
+    case 'running':
+      const rs = 10;
+      limbs.rightLeg.rotation.x = Math.sin(t * rs) * 0.8;
+      limbs.leftLeg.rotation.x = Math.sin(t * rs + Math.PI) * 0.8;
+      limbs.rightShin.rotation.x = Math.max(0, Math.sin(t * rs + 0.5)) * -0.7;
+      limbs.leftShin.rotation.x = Math.max(0, Math.sin(t * rs + Math.PI + 0.5)) * -0.7;
+      limbs.rightArm.rotation.x = Math.sin(t * rs + Math.PI) * 0.7;
+      limbs.leftArm.rotation.x = Math.sin(t * rs) * 0.7;
+      limbs.rightArm.rotation.z = 0.2;
+      limbs.leftArm.rotation.z = -0.2;
+      limbs.rightForearm.rotation.x = -0.8;
+      limbs.leftForearm.rotation.x = -0.8;
+      limbs.torso.rotation.x = 0.1;
+      limbs.torso.position.y = 1.16 + Math.abs(Math.sin(t * rs)) * 0.05;
+      break;
+      
+    case 'punch_right':
+      limbs.rightArm.rotation.x = -1.4;
+      limbs.rightArm.rotation.z = 0.3;
+      limbs.rightForearm.rotation.x = -0.2;
+      limbs.leftArm.rotation.x = -0.5;
+      limbs.leftArm.rotation.z = -0.3;
+      limbs.leftForearm.rotation.x = -1.2;
+      limbs.torso.rotation.y = -0.3;
+      limbs.rightLeg.rotation.x = 0.1;
+      limbs.leftLeg.rotation.x = -0.1;
+      break;
+      
+    case 'punch_left':
+      limbs.leftArm.rotation.x = -1.4;
+      limbs.leftArm.rotation.z = -0.3;
+      limbs.leftForearm.rotation.x = -0.2;
+      limbs.rightArm.rotation.x = -0.5;
+      limbs.rightArm.rotation.z = 0.3;
+      limbs.rightForearm.rotation.x = -1.2;
+      limbs.torso.rotation.y = 0.3;
+      limbs.rightLeg.rotation.x = -0.1;
+      limbs.leftLeg.rotation.x = 0.1;
+      break;
+      
+    case 'kick':
+      limbs.rightLeg.rotation.x = -1.2;
+      limbs.rightShin.rotation.x = -0.5;
+      limbs.leftLeg.rotation.x = 0.2;
+      limbs.torso.rotation.x = 0.15;
+      limbs.rightArm.rotation.x = 0.3;
+      limbs.rightArm.rotation.z = 0.5;
+      limbs.leftArm.rotation.x = 0.3;
+      limbs.leftArm.rotation.z = -0.5;
+      break;
+      
+    case 'throw':
+      limbs.rightArm.rotation.x = -2.2;
+      limbs.rightArm.rotation.z = 0.2;
+      limbs.rightForearm.rotation.x = 0;
+      limbs.torso.rotation.y = -0.4;
+      limbs.leftArm.rotation.z = -0.4;
+      limbs.rightLeg.rotation.x = 0.2;
+      break;
+      
+    case 'block':
+      limbs.rightArm.rotation.x = -1.3;
+      limbs.rightArm.rotation.z = 0.4;
+      limbs.rightForearm.rotation.x = -1.5;
+      limbs.leftArm.rotation.x = -1.3;
+      limbs.leftArm.rotation.z = -0.4;
+      limbs.leftForearm.rotation.x = -1.5;
+      limbs.rightLeg.rotation.x = 0.2;
+      limbs.leftLeg.rotation.x = -0.1;
+      limbs.torso.rotation.x = 0.1;
+      break;
+      
+    case 'hit':
+      limbs.torso.rotation.x = -0.2;
+      limbs.torso.rotation.z = Math.sin(t * 20) * 0.1;
+      limbs.head.rotation.x = -0.3;
+      limbs.rightArm.rotation.z = 0.5;
+      limbs.leftArm.rotation.z = -0.5;
+      break;
+      
+    case 'stunned':
+      limbs.torso.rotation.x = Math.sin(t * 3) * 0.15;
+      limbs.torso.rotation.z = Math.sin(t * 2.5) * 0.1;
+      limbs.head.rotation.z = Math.sin(t * 4) * 0.2;
+      limbs.rightArm.rotation.z = 0.6 + Math.sin(t * 3) * 0.2;
+      limbs.leftArm.rotation.z = -0.6 + Math.sin(t * 3.5) * 0.2;
+      break;
+      
+    case 'defeated':
+      limbs.torso.rotation.x = -0.8;
+      limbs.rightArm.rotation.z = 0.8;
+      limbs.leftArm.rotation.z = -0.8;
+      limbs.rightArm.rotation.x = 0.3;
+      limbs.leftArm.rotation.x = 0.3;
+      limbs.rightLeg.rotation.x = 0.3;
+      limbs.leftLeg.rotation.x = -0.1;
+      limbs.head.rotation.x = -0.5;
+      break;
+  }
+}
+
+// ====== FIGHT MODE ======
+function startFight(mode = 'single') {
+  currentState = GameState.FIGHTING;
+  gameMode = mode === 'survival' ? GameMode.SURVIVAL : GameMode.SINGLE;
+  document.getElementById('mainMenu').classList.add('hidden');
+  document.getElementById('customizer').classList.add('hidden');
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+  document.getElementById('fightHUD').classList.remove('hidden');
+  
+  playerHealth = 100;
+  playerStamina = 5;
+  comboCount = 0;
+  comboTimer = 0;
+  roundTimer = 99;
+  heldObject = null;
+  heldObjectData = null;
+  gunAmmo = 0;
+  isGunEmpty = false;
+  isBlocking = false;
+  isAttacking = false;
+  attackCooldown = 0;
+  thirdPersonView = false;
+  const camBtn = document.getElementById('camToggleBtn');
+  if (camBtn) camBtn.textContent = '3rd Person (V)';
+  
+  // Initialize mode-specific variables
+  if (gameMode === GameMode.SURVIVAL) {
+    currentWave = 1;
+    enemiesDefeated = 0;
+    waveStartDelay = 0;
+    isWaveActive = false;
+    document.getElementById('waveDisplay').classList.remove('hidden');
+    document.getElementById('enemyCountDisplay').classList.remove('hidden');
+    document.getElementById('singleEnemyHealth').classList.add('hidden');
+    document.getElementById('modeLabel').textContent = 'SURVIVAL';
+    document.getElementById('roundTimer').classList.add('hidden');
+  } else {
+    document.getElementById('waveDisplay').classList.add('hidden');
+    document.getElementById('enemyCountDisplay').classList.add('hidden');
+    document.getElementById('singleEnemyHealth').classList.remove('hidden');
+    document.getElementById('modeLabel').textContent = 'ROUND 1';
+    document.getElementById('roundTimer').classList.remove('hidden');
+  }
+  
+  updateHealthBars();
+  
+  // Timer (only for single mode)
+  if (roundTimerInterval) clearInterval(roundTimerInterval);
+  if (gameMode === GameMode.SINGLE) {
+    roundTimerInterval = setInterval(() => {
+      if (currentState !== GameState.FIGHTING) return;
+      roundTimer--;
+      document.getElementById('roundTimer').textContent = Math.max(0, roundTimer);
+      if (roundTimer <= 0) endFight();
+    }, 1000);
+  }
+  
+  initFightScene();
+  
+  // Pointer lock
+  const canvas = renderer.domElement;
+  canvas.style.display = 'block';
+  canvas.requestPointerLock();
+  
+  // Show fight intro
+  const intro = document.getElementById('fightIntro');
+  const introText = document.getElementById('fightIntroText');
+  intro.classList.remove('hidden');
+  introText.style.animation = 'none';
+  setTimeout(() => { introText.style.animation = 'fightIntroAnim 2s ease forwards'; }, 10);
+  setTimeout(() => { intro.classList.add('hidden'); }, 2100);
+}
+
+function initFightScene() {
+  // Create scene
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a15);
+  scene.fog = new THREE.FogExp2(0x0a0a15, 0.03);
+  
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+  
+  if (!renderer) {
+    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+  }
+  
+  // Ambient
+  scene.add(new THREE.AmbientLight(0x303050, 0.4));
+  
+  // Directional light (moonlight)
+  const dirLight = new THREE.DirectionalLight(0x8888cc, 0.3);
+  dirLight.position.set(5, 10, 5);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(2048, 2048);
+  scene.add(dirLight);
+  
+  // Build house
+  furnitureObjects = [];
+  throwableObjects = [];
+  wallObjects = [];
+  
+  // Detect room connections for doorways
+  const connections = detectRoomConnections();
+  
+  rooms.forEach(room => {
+    buildRoomMesh(scene, room, false, connections);
+    
+    // Track throwable items
+    room.items.forEach(item => {
+      const fDef = FURNITURE_DB.find(f => f.id === item.id);
+      if (fDef && fDef.throwable) {
+        const rot = room.rotation || 0;
+        const localX = item.x;
+        const localZ = item.z;
+        const rotatedX = localX * Math.cos(rot) - localZ * Math.sin(rot);
+        const rotatedZ = localX * Math.sin(rot) + localZ * Math.cos(rot);
+        const worldX = room.offsetX + room.width/2 + rotatedX;
+        const worldZ = room.offsetZ + room.depth/2 + rotatedZ;
+        const scaleY = item.scaleY || 1;
+        throwableObjects.push({
+          def: fDef,
+          position: new THREE.Vector3(worldX, fDef.size.y * scaleY / 2 + 0.08, worldZ),
+          mesh: null, // will be found in scene
+          pickedUp: false
+        });
+      }
+    });
+  });
+  
+  // Find meshes for throwable objects
+  scene.traverse(obj => {
+    if (obj.userData && obj.userData.furnitureDef) {
+      const fDef = obj.userData.furnitureDef;
+      if (fDef.throwable) {
+        const tObj = throwableObjects.find(t => 
+          !t.mesh && t.def.id === fDef.id && 
+          Math.abs(t.position.x - obj.position.x) < 0.5 &&
+          Math.abs(t.position.z - obj.position.z) < 0.5
+        );
+        if (tObj) tObj.mesh = obj;
+      }
+    }
+  });
+  
+  // Player setup
+  const mainRoom = rooms[0];
+  playerPos = { x: mainRoom.offsetX + mainRoom.width/2, y: 0, z: mainRoom.offsetZ + mainRoom.depth/2 + 2 };
+  playerRotation = { x: 0, y: 0 };
+  
+  const playerData = createHumanoid(0x2563eb, false);
+  playerMesh = playerData.mesh;
+  playerLimbs = playerData.limbs;
+  playerMesh.position.set(playerPos.x, playerPos.y, playerPos.z);
+  scene.add(playerMesh);
+  
+  // Enemy setup
+  enemies = [];
+  if (gameMode === GameMode.SURVIVAL) {
+    startWave();
+  } else {
+    // Single enemy for standard mode
+    spawnEnemy(mainRoom.offsetX + mainRoom.width/2, mainRoom.offsetZ + mainRoom.depth/2 - 3, 100);
+  }
+  
+  // Camera
+  camera.position.set(playerPos.x, playerPos.y + 1.6, playerPos.z);
+  
+  // First person arms
+  fpArms = createFirstPersonArms();
+  scene.add(fpArms);
+  
+  // Reset thrown objects
+  thrownObjects = [];
+  
+  // Start game loop
+  if (!clock) clock = new THREE.Clock();
+  clock.start();
+  
+  if (!gameLoopStarted) {
+    gameLoopStarted = true;
+    gameLoop();
+  }
+}
+
+let gameLoopStarted = false;
+let thrownObjects = [];
+
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+  
+  if (currentState !== GameState.FIGHTING) return;
+  
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const time = clock.getElapsedTime();
+  
+  // Update player movement
+  updatePlayer(dt, time);
+  
+  // Update all enemies
+  updateEnemies(dt, time);
+  
+  // Update thrown objects
+  updateThrownObjects(dt);
+  
+  // Update combat
+  updateCombat(dt);
+  
+  // Update animations
+  playerAnimTimer += dt;
+  animateCharacter(playerLimbs, playerAnimState, playerAnimTimer, dt);
+  
+  // Animate all enemies
+  enemies.forEach(enemy => {
+    enemy.animTimer += dt;
+    animateCharacter(enemy.limbs, enemy.animState, enemy.animTimer, dt);
+  });
+  
+  // Survival mode wave management
+  if (gameMode === GameMode.SURVIVAL) {
+    updateSurvivalMode(dt);
+  }
+  
+  // Update combo
+  if (comboTimer > 0) {
+    comboTimer -= dt;
+    if (comboTimer <= 0) comboCount = 0;
+  }
+  
+  // Attack cooldowns
+  if (attackCooldown > 0) attackCooldown -= dt;
+  enemies.forEach(enemy => {
+    if (enemy.attackCooldown > 0) enemy.attackCooldown -= dt;
+  });
+  
+  // Stamina regen
+  if (!isAttacking && !isBlocking) {
+    playerStamina = Math.min(5, playerStamina + dt * 1.5);
+    updateStaminaBar();
+  }
+  
+  // Update HUD item prompt
+  updateItemPrompt();
+  
+  // Update first person arms
+  updateFirstPersonArms(dt);
+  
+  // Update floating health bars in survival mode
+  if (gameMode === GameMode.SURVIVAL) {
+    updateFloatingHealthBars();
+  }
+  
+  renderer.render(scene, camera);
+}
+
+function updatePlayer(dt, time) {
+  const speed = isSprinting ? 6 : 3.5;
+  
+  // Calculate movement direction based on camera
+  const forward = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, playerRotation.y, 0));
+  const right = new THREE.Vector3(1, 0, 0).applyEuler(new THREE.Euler(0, playerRotation.y, 0));
+  
+  let moveDir = new THREE.Vector3(0, 0, 0);
+  if (moveForward) moveDir.add(forward);
+  if (moveBackward) moveDir.sub(forward);
+  if (moveRight) moveDir.add(right);
+  if (moveLeft) moveDir.sub(right);
+  
+  if (moveDir.length() > 0) {
+    moveDir.normalize();
+    playerPos.x += moveDir.x * speed * dt;
+    playerPos.z += moveDir.z * speed * dt;
+    
+    if (!isAttacking) {
+      playerAnimState = isSprinting ? 'running' : 'walking';
+    }
+  } else if (!isAttacking && !isBlocking) {
+    playerAnimState = 'idle';
+  }
+  
+  // Simple collision with room bounds
+  rooms.forEach(room => {
+    const minX = room.offsetX + 0.5;
+    const maxX = room.offsetX + room.width - 0.5;
+    const minZ = room.offsetZ + 0.5;
+    const maxZ = room.offsetZ + room.depth - 0.5;
+    
+    // Check if player is in this room
+    if (playerPos.x > room.offsetX && playerPos.x < room.offsetX + room.width &&
+        playerPos.z > room.offsetZ && playerPos.z < room.offsetZ + room.depth) {
+      playerPos.x = Math.max(minX, Math.min(maxX, playerPos.x));
+      playerPos.z = Math.max(minZ, Math.min(maxZ, playerPos.z));
+    }
+  });
+  
+  // Keep player in at least one room
+  let inAnyRoom = false;
+  rooms.forEach(room => {
+    if (playerPos.x >= room.offsetX && playerPos.x <= room.offsetX + room.width &&
+        playerPos.z >= room.offsetZ && playerPos.z <= room.offsetZ + room.depth) {
+      inAnyRoom = true;
+    }
+  });
+  
+  if (!inAnyRoom) {
+    // Push back to nearest room
+    let nearest = rooms[0];
+    let minDist = Infinity;
+    rooms.forEach(room => {
+      const cx = room.offsetX + room.width/2;
+      const cz = room.offsetZ + room.depth/2;
+      const d = Math.hypot(playerPos.x - cx, playerPos.z - cz);
+      if (d < minDist) { minDist = d; nearest = room; }
+    });
+    playerPos.x = Math.max(nearest.offsetX + 0.5, Math.min(nearest.offsetX + nearest.width - 0.5, playerPos.x));
+    playerPos.z = Math.max(nearest.offsetZ + 0.5, Math.min(nearest.offsetZ + nearest.depth - 0.5, playerPos.z));
+  }
+  
+  // Update player mesh position
+  playerMesh.position.set(playerPos.x, playerPos.y, playerPos.z);
+  playerMesh.rotation.y = playerRotation.y;
+  
+  // Update camera based on view mode
+  if (thirdPersonView) {
+    // 3rd person: behind and above player
+    const camDist = 5;
+    const camHeight = 3;
+    const behindX = -Math.sin(playerRotation.y) * camDist;
+    const behindZ = -Math.cos(playerRotation.y) * camDist;
+    camera.position.set(
+      playerPos.x + behindX,
+      playerPos.y + camHeight,
+      playerPos.z + behindZ
+    );
+    camera.lookAt(playerPos.x, playerPos.y + 1.2, playerPos.z);
+    
+    // Show player body in 3rd person
+    playerMesh.visible = true;
+    if (fpArms) fpArms.visible = false;
+  } else {
+    // First person
+    camera.position.set(playerPos.x, playerPos.y + 1.6, playerPos.z);
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = playerRotation.y;
+    camera.rotation.x = playerRotation.x;
+    
+    // Hide player mesh for first person
+    playerMesh.visible = false;
+    if (fpArms) fpArms.visible = true;
+  }
+  
+  // Update held object position
+  if (heldObject && heldObject.mesh) {
+    const holdPos = new THREE.Vector3(0.5, -0.3, -0.8);
+    holdPos.applyEuler(camera.rotation);
+    holdPos.add(camera.position);
+    heldObject.mesh.position.copy(holdPos);
+    heldObject.mesh.rotation.y = playerRotation.y;
+  }
+}
+
+function spawnEnemy(x, z, health = 100) {
+  const enemyData = createHumanoid(0x1a1a1a, true);
+  const enemy = {
+    mesh: enemyData.mesh,
+    limbs: enemyData.limbs,
+    pos: {x, y: 0, z},
+    state: 'approaching',
+    stateTimer: 0,
+    attackCooldown: 0,
+    animState: 'idle',
+    animTimer: 0,
+    targetPos: {x: 0, z: 0},
+    health: health,
+    maxHealth: health
+  };
+  enemy.mesh.position.set(x, 0, z);
+  scene.add(enemy.mesh);
+  enemies.push(enemy);
+  updateEnemyCount();
+  return enemy;
+}
+
+function startWave() {
+  isWaveActive = true;
+  enemiesInWave = currentWave + Math.floor(currentWave / 2); // Wave 1: 1 enemy, Wave 2: 2, Wave 3: 4, etc.
+  const mainRoom = rooms[0];
+  
+  // Spawn enemies around the room edges
+  for (let i = 0; i < enemiesInWave; i++) {
+    const angle = (i / enemiesInWave) * Math.PI * 2;
+    const radius = Math.min(mainRoom.width, mainRoom.depth) * 0.4;
+    const x = mainRoom.offsetX + mainRoom.width/2 + Math.cos(angle) * radius;
+    const z = mainRoom.offsetZ + mainRoom.depth/2 + Math.sin(angle) * radius;
+    const health = 100 + (currentWave - 1) * 10; // Enemies get tougher each wave
+    spawnEnemy(x, z, health);
+  }
+  
+  document.getElementById('waveNumber').textContent = currentWave;
+  updateEnemyCount();
+  showComboText('WAVE ' + currentWave + '!', '#a855f7');
+}
+
+function updateEnemyCount() {
+  const alive = enemies.filter(e => e.health > 0).length;
+  document.getElementById('enemyCount').textContent = alive + '/' + enemiesInWave;
+}
+
+function updateSurvivalMode(dt) {
+  if (!isWaveActive) {
+    waveStartDelay += dt;
+    if (waveStartDelay >= 3) {
+      currentWave++;
+      waveStartDelay = 0;
+      startWave();
+    }
+  } else {
+    // Check if all enemies defeated
+    const aliveEnemies = enemies.filter(e => e.health > 0).length;
+    if (aliveEnemies === 0) {
+      isWaveActive = false;
+      waveStartDelay = 0;
+      showComboText('WAVE CLEARED!', '#4ade80');
+    }
+  }
+}
+
+function updateEnemies(dt, time) {
+  enemies.forEach((enemy, idx) => {
+    if (enemy.health <= 0) {
+      if (enemy.animState !== 'defeated') {
+        enemy.animState = 'defeated';
+        animateCharacter(enemy.limbs, 'defeated', 0, 0);
+      }
+      return;
+    }
+    updateEnemy(enemy, dt, time);
+  });
+}
+
+function updateEnemy(enemy, dt, time) {
+  const dx = playerPos.x - enemy.pos.x;
+  const dz = playerPos.z - enemy.pos.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  const angle = Math.atan2(dx, dz);
+  
+  enemy.stateTimer -= dt;
+  
+  switch (enemy.state) {
+    case 'approaching':
+      if (dist > 2) {
+        enemy.pos.x += Math.sin(angle) * 2.5 * dt;
+        enemy.pos.z += Math.cos(angle) * 2.5 * dt;
+        enemy.animState = 'walking';
+      } else {
+        enemy.state = 'attacking';
+        enemy.stateTimer = 0.5 + Math.random() * 0.5;
+      }
+      if (enemy.stateTimer <= 0 && Math.random() < 0.3) {
+        enemy.state = 'strafing';
+        enemy.stateTimer = 1 + Math.random();
+        enemy.targetPos = {
+          x: playerPos.x + (Math.random() - 0.5) * 4,
+          z: playerPos.z + (Math.random() - 0.5) * 4
+        };
+      }
+      break;
+      
+    case 'attacking':
+      // Face player
+      if (dist < 2.5 && enemy.attackCooldown <= 0) {
+        // Attack!
+        const attackType = Math.random();
+        if (attackType < 0.5) {
+          enemy.animState = Math.random() < 0.5 ? 'punch_right' : 'punch_left';
+          enemy.attackCooldown = 0.8;
+          // Check if hit lands
+          setTimeout(() => {
+            if (currentState !== GameState.FIGHTING) return;
+            const d = Math.sqrt((playerPos.x-enemy.pos.x)**2 + (playerPos.z-enemy.pos.z)**2);
+            if (d < 2) {
+              if (isBlocking) {
+                damagePlayer(2);
+                showComboText('BLOCKED!', '#60a5fa');
+              } else {
+                damagePlayer(8 + Math.random() * 5);
+                showComboText('HIT!', '#ef4444');
+              }
+            }
+          }, 300);
+        } else if (attackType < 0.8) {
+          enemy.animState = 'kick';
+          enemy.attackCooldown = 1.2;
+          setTimeout(() => {
+            if (currentState !== GameState.FIGHTING) return;
+            const d = Math.sqrt((playerPos.x-enemy.pos.x)**2 + (playerPos.z-enemy.pos.z)**2);
+            if (d < 2.2) {
+              if (isBlocking) {
+                damagePlayer(3);
+                showComboText('BLOCKED!', '#60a5fa');
+              } else {
+                damagePlayer(12 + Math.random() * 6);
+                showComboText('KICK!', '#ef4444');
+              }
+            }
+          }, 400);
+        } else {
+          // Try to pick up nearby object
+          enemy.animState = 'punch_right';
+          enemy.attackCooldown = 1.5;
+        }
+        
+        enemy.stateTimer = 0.5 + Math.random();
+      } else if (dist > 3) {
+        enemy.state = 'approaching';
+        enemy.stateTimer = 2;
+      } else {
+        // Close but cooling down - strafe
+        const strafeAngle = angle + Math.PI/2;
+        enemy.pos.x += Math.sin(strafeAngle) * 1.5 * dt;
+        enemy.pos.z += Math.cos(strafeAngle) * 1.5 * dt;
+        if (enemy.attackCooldown <= 0) enemy.animState = 'walking';
+      }
+      
+      if (enemy.stateTimer <= 0) {
+        if (Math.random() < 0.4) {
+          enemy.state = 'strafing';
+          enemy.stateTimer = 1 + Math.random();
+        } else {
+          enemy.state = 'approaching';
+          enemy.stateTimer = 1;
+        }
+      }
+      break;
+      
+    case 'strafing':
+      const sa = angle + (Math.random() < 0.5 ? 1 : -1) * Math.PI/3;
+      enemy.pos.x += Math.sin(sa) * 2 * dt;
+      enemy.pos.z += Math.cos(sa) * 2 * dt;
+      enemy.animState = 'walking';
+      
+      if (enemy.stateTimer <= 0) {
+        enemy.state = dist < 3 ? 'attacking' : 'approaching';
+        enemy.stateTimer = 1;
+      }
+      break;
+      
+    case 'retreating':
+      enemy.pos.x -= Math.sin(angle) * 3 * dt;
+      enemy.pos.z -= Math.cos(angle) * 3 * dt;
+      enemy.animState = 'running';
+      
+      if (enemy.stateTimer <= 0 || dist > 6) {
+        enemy.state = 'approaching';
+        enemy.stateTimer = 1;
+      }
+      break;
+      
+    case 'stunned':
+      enemy.animState = 'stunned';
+      if (enemy.stateTimer <= 0) {
+        enemy.state = Math.random() < 0.5 ? 'retreating' : 'attacking';
+        enemy.stateTimer = 1 + Math.random();
+      }
+      break;
+  }
+  
+  // Keep enemy in bounds
+  rooms.forEach(room => {
+    if (enemy.pos.x >= room.offsetX && enemy.pos.x <= room.offsetX + room.width &&
+        enemy.pos.z >= room.offsetZ && enemy.pos.z <= room.offsetZ + room.depth) {
+      enemy.pos.x = Math.max(room.offsetX + 0.5, Math.min(room.offsetX + room.width - 0.5, enemy.pos.x));
+      enemy.pos.z = Math.max(room.offsetZ + 0.5, Math.min(room.offsetZ + room.depth - 0.5, enemy.pos.z));
+    }
+  });
+  
+  let enemyInRoom = false;
+  rooms.forEach(room => {
+    if (enemy.pos.x >= room.offsetX && enemy.pos.x <= room.offsetX + room.width &&
+        enemy.pos.z >= room.offsetZ && enemy.pos.z <= room.offsetZ + room.depth) {
+      enemyInRoom = true;
+    }
+  });
+  if (!enemyInRoom) {
+    let nearest = rooms[0];
+    let minD = Infinity;
+    rooms.forEach(room => {
+      const cx = room.offsetX + room.width/2;
+      const cz = room.offsetZ + room.depth/2;
+      const d = Math.hypot(enemy.pos.x - cx, enemy.pos.z - cz);
+      if (d < minD) { minD = d; nearest = room; }
+    });
+    enemy.pos.x = Math.max(nearest.offsetX + 0.5, Math.min(nearest.offsetX + nearest.width - 0.5, enemy.pos.x));
+    enemy.pos.z = Math.max(nearest.offsetZ + 0.5, Math.min(nearest.offsetZ + nearest.depth - 0.5, enemy.pos.z));
+  }
+  
+  // Update mesh
+  enemy.mesh.position.set(enemy.pos.x, enemy.pos.y, enemy.pos.z);
+  enemy.mesh.rotation.y = angle;
+}
+
+function updateCombat(dt) {
+  // Nothing extra needed here - combat handled via events
+}
+
+function updateThrownObjects(dt) {
+  thrownObjects = thrownObjects.filter(obj => {
+    obj.velocity.y -= 9.8 * dt;
+    obj.mesh.position.x += obj.velocity.x * dt;
+    obj.mesh.position.y += obj.velocity.y * dt;
+    obj.mesh.position.z += obj.velocity.z * dt;
+    obj.mesh.rotation.x += obj.spin.x * dt;
+    obj.mesh.rotation.z += obj.spin.z * dt;
+    obj.life -= dt;
+    
+    // Check hit any enemy
+    let hitEnemy = false;
+    enemies.forEach(enemy => {
+      if (enemy.health <= 0) return;
+      const dx = obj.mesh.position.x - enemy.pos.x;
+      const dy = obj.mesh.position.y - (enemy.pos.y + 1);
+      const dz = obj.mesh.position.z - enemy.pos.z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      
+      if (dist < 1.0) {
+        damageEnemy(enemy, obj.damage);
+        showComboText('💥 ' + obj.name + '!', '#f59e0b');
+        enemy.state = 'stunned';
+        enemy.stateTimer = 1.0;
+        
+        // Create impact effect
+        createImpactEffect(obj.mesh.position.clone());
+        hitEnemy = true;
+      }
+    });
+    
+    if (hitEnemy) {
+      scene.remove(obj.mesh);
+      return false;
+    }
+    
+    // Floor collision
+    if (obj.mesh.position.y < 0.1) {
+      obj.mesh.position.y = 0.1;
+      obj.velocity.y = 0;
+      obj.velocity.x *= 0.5;
+      obj.velocity.z *= 0.5;
+      if (obj.life < 2) {
+        scene.remove(obj.mesh);
+        return false;
+      }
+    }
+    
+    if (obj.life <= 0) {
+      scene.remove(obj.mesh);
+      return false;
+    }
+    
+    return true;
+  });
+}
+
+function createImpactEffect(pos) {
+  // Particle burst
+  for (let i = 0; i < 8; i++) {
+    const geo = new THREE.SphereGeometry(0.05, 4, 4);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    const p = new THREE.Mesh(geo, mat);
+    p.position.copy(pos);
+    scene.add(p);
+    
+    const vel = new THREE.Vector3(
+      (Math.random()-0.5) * 5,
+      Math.random() * 3,
+      (Math.random()-0.5) * 5
+    );
+    
+    const startTime = Date.now();
+    function animParticle() {
+      const elapsed = (Date.now() - startTime) / 1000;
+      if (elapsed > 0.5) { scene.remove(p); return; }
+      p.position.add(vel.clone().multiplyScalar(0.016));
+      vel.y -= 9.8 * 0.016;
+      p.scale.setScalar(1 - elapsed * 2);
+      requestAnimationFrame(animParticle);
+    }
+    animParticle();
+  }
+}
+
+// ====== ATTACK FUNCTIONS ======
+function playerPunch() {
+  if (attackCooldown > 0 || playerStamina < 1) return;
+  
+  isAttacking = true;
+  attackCooldown = 0.4;
+  playerStamina -= 1;
+  updateStaminaBar();
+  
+  playerAnimState = comboCount % 2 === 0 ? 'punch_right' : 'punch_left';
+  playerAnimTimer = 0;
+  
+  setTimeout(() => {
+    if (currentState !== GameState.FIGHTING) return;
+    isAttacking = false;
+    
+    // Check hit on any enemy
+    let hitAny = false;
+    enemies.forEach(enemy => {
+      if (enemy.health <= 0) return;
+      
+      const dx = enemy.pos.x - playerPos.x;
+      const dz = enemy.pos.z - playerPos.z;
+      const dist = Math.sqrt(dx*dx + dz*dz);
+      
+      // Check if facing enemy
+      const toEnemy = Math.atan2(dx, dz);
+      let angleDiff = toEnemy - playerRotation.y;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      
+      if (dist < 2.2 && Math.abs(angleDiff) < Math.PI/2) {
+        const dmg = 6 + Math.random() * 4 + comboCount * 2;
+        damageEnemy(enemy, dmg);
+        hitAny = true;
+        
+        // Knockback enemy slightly
+        enemy.pos.x += Math.sin(toEnemy) * 0.3;
+        enemy.pos.z += Math.cos(toEnemy) * 0.3;
+        
+        if (enemy.state !== 'stunned') {
+          enemy.animState = 'hit';
+          setTimeout(() => { if (enemy.animState === 'hit') enemy.animState = 'idle'; }, 300);
+        }
+      }
+    });
+    
+    if (hitAny) {
+      comboCount++;
+      comboTimer = 2;
+      
+      if (comboCount >= 3) {
+        showComboText(`${comboCount}x COMBO!`, '#a855f7');
+      } else {
+        showComboText('PUNCH!', '#22c55e');
+      }
+    }
+  }, 200);
+}
+
+function playerKick() {
+  if (attackCooldown > 0 || playerStamina < 2) return;
+  
+  isAttacking = true;
+  attackCooldown = 0.7;
+  playerStamina -= 2;
+  updateStaminaBar();
+  
+  playerAnimState = 'kick';
+  playerAnimTimer = 0;
+  
+  setTimeout(() => {
+    if (currentState !== GameState.FIGHTING) return;
+    isAttacking = false;
+    
+    let hitAny = false;
+    enemies.forEach(enemy => {
+      if (enemy.health <= 0) return;
+      
+      const dx = enemy.pos.x - playerPos.x;
+      const dz = enemy.pos.z - playerPos.z;
+      const dist = Math.sqrt(dx*dx + dz*dz);
+      
+      const toEnemy = Math.atan2(dx, dz);
+      let angleDiff = toEnemy - playerRotation.y;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      
+      if (dist < 2.5 && Math.abs(angleDiff) < Math.PI/2) {
+        const dmg = 12 + Math.random() * 6;
+        damageEnemy(enemy, dmg);
+        hitAny = true;
+        
+        // Bigger knockback
+        enemy.pos.x += Math.sin(toEnemy) * 0.6;
+        enemy.pos.z += Math.cos(toEnemy) * 0.6;
+        
+        if (Math.random() < 0.3) {
+          enemy.state = 'stunned';
+          enemy.stateTimer = 0.8;
+        }
+        
+        enemy.animState = 'hit';
+        setTimeout(() => { if (enemy.animState === 'hit') enemy.animState = 'idle'; }, 400);
+      }
+    });
+    
+    if (hitAny) {
+      showComboText('KICK!', '#f97316');
+      comboCount++;
+      comboTimer = 2;
+    }
+  }, 300);
+}
+
+function tryPickupOrThrow() {
+  if (heldObject) {
+    // Throw
+    throwHeldObject();
+    return;
+  }
+  
+  // Try to pick up nearby throwable
+  let nearest = null;
+  let nearDist = 2.5;
+  
+  throwableObjects.forEach(obj => {
+    if (obj.pickedUp || !obj.mesh) return;
+    const d = Math.sqrt(
+      (obj.mesh.position.x - playerPos.x) ** 2 +
+      (obj.mesh.position.z - playerPos.z) ** 2
+    );
+    if (d < nearDist) {
+      nearDist = d;
+      nearest = obj;
+    }
+  });
+  
+  if (nearest) {
+    heldObject = nearest;
+    heldObjectData = nearest.def;
+    nearest.pickedUp = true;
+    
+    // Initialize gun ammo if it's a gun
+    if (nearest.def.isGun) {
+      gunAmmo = nearest.def.ammo || 8;
+      isGunEmpty = false;
+    }
+    
+    document.getElementById('heldItemHUD').classList.remove('hidden');
+    const itemNameText = nearest.def.isGun ? nearest.def.name + ' [' + gunAmmo + ']' : nearest.def.name;
+    document.getElementById('heldItemName').textContent = itemNameText;
+    showComboText('Picked up ' + nearest.def.name, '#60a5fa');
+  }
+}
+
+function shootGun() {
+  if (!heldObjectData || !heldObjectData.isGun || gunAmmo <= 0 || isAttacking) return;
+  
+  gunAmmo--;
+  isAttacking = true;
+  attackCooldown = 0.3;
+  
+  // Update HUD
+  document.getElementById('heldItemName').textContent = heldObjectData.name + ' [' + gunAmmo + ']';
+  
+  // Muzzle flash effect
+  const muzzleFlash = new THREE.PointLight(0xffaa00, 2, 5);
+  const flashPos = new THREE.Vector3(0, 1.5, -0.5);
+  flashPos.applyEuler(new THREE.Euler(playerRotation.x, playerRotation.y, 0));
+  flashPos.add(new THREE.Vector3(playerPos.x, playerPos.y, playerPos.z));
+  muzzleFlash.position.copy(flashPos);
+  scene.add(muzzleFlash);
+  setTimeout(() => scene.remove(muzzleFlash), 50);
+  
+  // Raycast to find hit enemy
+  const shootDir = new THREE.Vector3(0, 0, -1);
+  shootDir.applyEuler(new THREE.Euler(playerRotation.x, playerRotation.y, 0));
+  
+  const raycaster = new THREE.Raycaster(
+    new THREE.Vector3(playerPos.x, playerPos.y + 1.5, playerPos.z),
+    shootDir
+  );
+  
+  // Check all enemies
+  let hitEnemy = null;
+  let closestDist = Infinity;
+  
+  enemies.forEach(enemy => {
+    if (enemy.health <= 0) return;
+    const enemyBox = new THREE.Box3().setFromObject(enemy.mesh);
+    const intersect = raycaster.ray.intersectBox(enemyBox, new THREE.Vector3());
+    if (intersect) {
+      const dist = intersect.distanceTo(raycaster.ray.origin);
+      if (dist < closestDist && dist < 50) {
+        closestDist = dist;
+        hitEnemy = enemy;
+      }
+    }
+  });
+  
+  if (hitEnemy) {
+    // One-shot kill
+    damageEnemy(hitEnemy, hitEnemy.health);
+    showComboText('🎯 HEADSHOT!', '#ff0000');
+    
+    // Impact effect
+    const impactPos = hitEnemy.mesh.position.clone();
+    impactPos.y += 1;
+    createImpactEffect(impactPos);
+  }
+  
+  // Gun animation
+  playerAnimState = 'punch_right';
+  playerAnimTimer = 0;
+  
+  // Check if empty
+  if (gunAmmo <= 0) {
+    isGunEmpty = true;
+    setTimeout(() => {
+      showComboText('OUT OF AMMO! Press E to throw', '#fbbf24');
+    }, 300);
+  }
+  
+  setTimeout(() => { isAttacking = false; }, 300);
+}
+
+function throwHeldObject() {
+  if (!heldObject || !heldObject.mesh) return;
+  
+  playerAnimState = 'throw';
+  playerAnimTimer = 0;
+  isAttacking = true;
+  attackCooldown = 0.5;
+  
+  const throwDir = new THREE.Vector3(0, 0, -1);
+  throwDir.applyEuler(new THREE.Euler(playerRotation.x, playerRotation.y, 0));
+  
+  const throwSpeed = 15;
+  
+  thrownObjects.push({
+    mesh: heldObject.mesh,
+    velocity: {
+      x: throwDir.x * throwSpeed,
+      y: throwDir.y * throwSpeed + 2,
+      z: throwDir.z * throwSpeed
+    },
+    spin: {
+      x: (Math.random() - 0.5) * 15,
+      z: (Math.random() - 0.5) * 15
+    },
+    damage: heldObjectData.damage || 10,
+    name: heldObjectData.name,
+    life: 3
+  });
+  
+  showComboText('🎯 THROW!', '#f59e0b');
+  
+  heldObject = null;
+  heldObjectData = null;
+  gunAmmo = 0;
+  isGunEmpty = false;
+  document.getElementById('heldItemHUD').classList.add('hidden');
+  
+  setTimeout(() => { isAttacking = false; }, 300);
+}
+
+// ====== DAMAGE SYSTEM ======
+function damagePlayer(amount) {
+  playerHealth = Math.max(0, playerHealth - amount);
+  updateHealthBars();
+  
+  // Flash screen
+  const overlay = document.getElementById('damageOverlay');
+  overlay.classList.remove('hidden');
+  setTimeout(() => overlay.classList.add('hidden'), 200);
+  
+  // Camera shake
+  const origX = camera.rotation.z;
+  camera.rotation.z = (Math.random() - 0.5) * 0.05;
+  setTimeout(() => camera.rotation.z = origX, 100);
+  
+  if (playerHealth <= 0) endFight();
+}
+
+function damageEnemy(enemy, amount) {
+  enemy.health = Math.max(0, enemy.health - amount);
+  
+  // For single mode, update health bar
+  if (gameMode === GameMode.SINGLE && enemies.length === 1) {
+    updateHealthBars();
+  } else if (gameMode === GameMode.SURVIVAL) {
+    updateEnemyCount();
+  }
+  
+  // Flash enemy red
+  enemy.mesh.traverse(child => {
+    if (child.isMesh && child.material) {
+      const origColor = child.material.color.getHex();
+      child.material.emissive = new THREE.Color(0xff0000);
+      child.material.emissiveIntensity = 0.5;
+      setTimeout(() => {
+        child.material.emissive = new THREE.Color(0x000000);
+        child.material.emissiveIntensity = 0;
+      }, 200);
+    }
+  });
+  
+  if (enemy.health <= 0) {
+    enemy.animState = 'defeated';
+    enemiesDefeated++;
+    if (gameMode === GameMode.SINGLE) {
+      endFight();
+    }
+  }
+}
+
+function updateHealthBars() {
+  document.getElementById('playerHealthBar').style.width = playerHealth + '%';
+  document.getElementById('playerHealthText').textContent = Math.round(playerHealth);
+  
+  if (gameMode === GameMode.SINGLE && enemies.length > 0) {
+    const enemy = enemies[0];
+    const pct = (enemy.health / enemy.maxHealth) * 100;
+    document.getElementById('enemyHealthBar').style.width = pct + '%';
+    document.getElementById('enemyHealthText').textContent = Math.round(enemy.health);
+  }
+  
+  // Color change when low
+  if (playerHealth < 30) {
+    document.getElementById('playerHealthBar').style.background = 'linear-gradient(180deg, #ef4444, #991b1b)';
+  }
+  if (gameMode === GameMode.SINGLE && enemies.length > 0 && enemies[0].health < 30) {
+    document.getElementById('enemyHealthBar').style.background = 'linear-gradient(180deg, #fbbf24, #b45309)';
+  }
+}
+
+function updateStaminaBar() {
+  const dots = document.getElementById('playerStaminaBar').children;
+  for (let i = 0; i < dots.length; i++) {
+    dots[i].style.background = i < Math.floor(playerStamina) ? '#facc15' : '#374151';
+  }
+}
+
+function showComboText(text, color) {
+  const container = document.getElementById('comboDisplay');
+  const div = document.createElement('div');
+  div.className = 'combo-text text-3xl font-black';
+  div.style.color = color;
+  div.style.fontFamily = "'Orbitron', monospace";
+  div.style.textShadow = `0 0 10px ${color}`;
+  div.textContent = text;
+  container.appendChild(div);
+  setTimeout(() => div.remove(), 1000);
+}
+
+function updateItemPrompt() {
+  const prompt = document.getElementById('actionPrompt');
+  if (heldObject) {
+    prompt.classList.remove('hidden');
+    prompt.textContent = 'Press E to throw ' + heldObjectData.name;
+    return;
+  }
+  
+  let nearItem = false;
+  throwableObjects.forEach(obj => {
+    if (obj.pickedUp || !obj.mesh) return;
+    const d = Math.sqrt(
+      (obj.mesh.position.x - playerPos.x) ** 2 +
+      (obj.mesh.position.z - playerPos.z) ** 2
+    );
+    if (d < 2.5) {
+      nearItem = true;
+      prompt.classList.remove('hidden');
+      prompt.textContent = 'Press E to pick up ' + obj.def.name;
+    }
+  });
+  
+  if (!nearItem && !heldObject) {
+    prompt.classList.add('hidden');
+  }
+  
+  // Enemy distance indicator (show nearest enemy)
+  if (enemies.length > 0) {
+    let nearestDist = Infinity;
+    let nearestEnemy = null;
+    enemies.forEach(enemy => {
+      if (enemy.health <= 0) return;
+      const d = Math.sqrt((playerPos.x-enemy.pos.x)**2 + (playerPos.z-enemy.pos.z)**2);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestEnemy = enemy;
+      }
+    });
+    
+    const indicator = document.getElementById('enemyIndicator');
+    const distText = document.getElementById('enemyDistance');
+    if (nearestEnemy && nearestDist > 5) {
+      indicator.classList.remove('hidden');
+      const dx = nearestEnemy.pos.x - playerPos.x;
+      const dz = nearestEnemy.pos.z - playerPos.z;
+      const toEnemy = Math.atan2(dx, dz);
+      let relAngle = toEnemy - playerRotation.y;
+      while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+      while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+      let dir = '↑';
+      if (relAngle > Math.PI*0.75) dir = '↓';
+      else if (relAngle < -Math.PI*0.75) dir = '↓';
+      else if (relAngle > Math.PI*0.25) dir = '←';
+      else if (relAngle < -Math.PI*0.25) dir = '→';
+      distText.textContent = `INTRUDER ${dir} ${nearestDist.toFixed(1)}m`;
+    } else {
+      indicator.classList.add('hidden');
+    }
+  }
+}
+
+function updateFloatingHealthBars() {
+  // Remove old health bars
+  document.querySelectorAll('.floating-healthbar').forEach(el => el.remove());
+  
+  enemies.forEach(enemy => {
+    if (enemy.health <= 0) return;
+    
+    // Calculate screen position of enemy head
+    const headPos = new THREE.Vector3(
+      enemy.pos.x,
+      enemy.pos.y + 2.2,
+      enemy.pos.z
+    );
+    
+    headPos.project(camera);
+    
+    // Convert to screen coordinates
+    const x = (headPos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-(headPos.y) * 0.5 + 0.5) * window.innerHeight;
+    
+    // Only show if in front of camera
+    if (headPos.z > 1) return;
+    
+    // Create health bar element
+    const healthBar = document.createElement('div');
+    healthBar.className = 'floating-healthbar';
+    healthBar.style.left = x + 'px';
+    healthBar.style.top = y + 'px';
+    
+    const healthPct = (enemy.health / enemy.maxHealth) * 100;
+    healthBar.innerHTML = `
+      <div class="floating-healthbar-bg">
+        <div class="floating-healthbar-fill" style="width: ${healthPct}%"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(healthBar);
+  });
+}
+
+// ====== GAME END ======
+function endFight() {
+  currentState = GameState.GAMEOVER;
+  if (roundTimerInterval) clearInterval(roundTimerInterval);
+  
+  if (document.pointerLockElement) document.exitPointerLock();
+  
+  const overlay = document.getElementById('gameOverOverlay');
+  const title = document.getElementById('gameOverTitle');
+  const subtitle = document.getElementById('gameOverSubtitle');
+  
+  if (playerHealth <= 0) {
+    title.textContent = 'DEFEATED';
+    title.style.color = '#ef4444';
+    title.style.textShadow = '0 0 30px rgba(239,68,68,0.6)';
+    if (gameMode === GameMode.SURVIVAL) {
+      subtitle.textContent = `You survived ${currentWave} waves and defeated ${enemiesDefeated} intruders!`;
+    } else {
+      subtitle.textContent = 'The intruder has overwhelmed you...';
+    }
+  } else if (gameMode === GameMode.SINGLE) {
+    // Single mode victory
+    const aliveEnemies = enemies.filter(e => e.health > 0).length;
+    if (aliveEnemies === 0) {
+      title.textContent = 'VICTORY!';
+      title.style.color = '#4ade80';
+      title.style.textShadow = '0 0 30px rgba(74,222,128,0.6)';
+      subtitle.textContent = 'You defeated the intruder! Your home is safe.';
+    } else if (roundTimer <= 0) {
+      if (playerHealth > enemies[0].health) {
+        title.textContent = 'VICTORY!';
+        title.style.color = '#4ade80';
+        title.style.textShadow = '0 0 30px rgba(74,222,128,0.6)';
+        subtitle.textContent = 'Time\'s up! You had more health remaining.';
+      } else {
+        title.textContent = 'DEFEATED';
+        title.style.color = '#ef4444';
+        title.style.textShadow = '0 0 30px rgba(239,68,68,0.6)';
+        subtitle.textContent = 'Time\'s up! The intruder had more health.';
+      }
+    }
+  }
+  
+  overlay.classList.remove('hidden');
+}
+
+// ====== INPUT HANDLERS ======
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  
+  // Customizer shortcuts
+  if (currentState === GameState.CUSTOMIZING) {
+    if (e.code === 'Delete' || e.code === 'Backspace') {
+      if (selectedRoom >= 0 && rooms.length > 1) removeRoom(selectedRoom);
+    }
+    return;
+  }
+  
+  if (currentState !== GameState.FIGHTING) return;
+  
+  switch(e.code) {
+    case 'KeyW': moveForward = true; break;
+    case 'KeyS': moveBackward = true; break;
+    case 'KeyA': moveLeft = true; break;
+    case 'KeyD': moveRight = true; break;
+    case 'ShiftLeft': case 'ShiftRight': isSprinting = true; break;
+    case 'Space':
+      e.preventDefault();
+      isBlocking = true;
+      if (!isAttacking) playerAnimState = 'block';
+      break;
+    case 'KeyE': tryPickupOrThrow(); break;
+    case 'KeyV': 
+      thirdPersonView = !thirdPersonView;
+      const camBtn = document.getElementById('camToggleBtn');
+      if (camBtn) camBtn.textContent = thirdPersonView ? '1st Person (V)' : '3rd Person (V)';
+      break;
+    case 'Escape':
+      if (document.pointerLockElement) document.exitPointerLock();
+      break;
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  
+  switch(e.code) {
+    case 'KeyW': moveForward = false; break;
+    case 'KeyS': moveBackward = false; break;
+    case 'KeyA': moveLeft = false; break;
+    case 'KeyD': moveRight = false; break;
+    case 'ShiftLeft': case 'ShiftRight': isSprinting = false; break;
+    case 'Space': isBlocking = false; break;
+  }
+});
+
+document.addEventListener('mousedown', (e) => {
+  if (currentState !== GameState.FIGHTING) return;
+  
+  if (!document.pointerLockElement) {
+    document.getElementById('gameCanvas').requestPointerLock();
+    return;
+  }
+  
+  if (e.button === 0) { // Left click - shoot gun or punch
+    if (heldObjectData && heldObjectData.isGun && !isGunEmpty) {
+      shootGun();
+    } else {
+      playerPunch();
+    }
+  } else if (e.button === 2) { // Right click - kick
+    playerKick();
+  }
+});
+
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+document.addEventListener('mousemove', (e) => {
+  if (currentState !== GameState.FIGHTING || !document.pointerLockElement) return;
+  
+  const sensitivity = 0.002;
+  playerRotation.y -= e.movementX * sensitivity;
+  playerRotation.x -= e.movementY * sensitivity;
+  playerRotation.x = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, playerRotation.x));
+});
+
+document.addEventListener('pointerlockchange', () => {
+  isPointerLocked = !!document.pointerLockElement;
+});
+
+// ====== WINDOW RESIZE ======
+window.addEventListener('resize', () => {
+  if (camera) {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
+  if (renderer) {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+});
+
+// ====== INIT ======
+initDefaultRooms();
+
+// Hide game canvas initially
+document.getElementById('gameCanvas').style.display = 'none';
+
+function resetCamera() {
+  // Reset handled by orbit controls in initPreview
+}
+
+// ====== FIRST PERSON ARMS ======
+let fpArms = null;
+
+function createFirstPersonArms() {
+  const group = new THREE.Group();
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xe8b89d, roughness: 0.6 });
+  const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.8 });
+  
+  // Right arm
+  const rArm = new THREE.Group();
+  const rSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), sleeveMat);
+  rSleeve.position.set(0, 0, 0);
+  rArm.add(rSleeve);
+  const rForearm = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.35, 0.10), skinMat);
+  rForearm.position.set(0, -0.35, 0);
+  rArm.add(rForearm);
+  const rFist = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), skinMat);
+  rFist.position.set(0, -0.55, 0);
+  rArm.add(rFist);
+  rArm.position.set(0.35, -0.3, -0.5);
+  rArm.rotation.x = -0.3;
+  group.add(rArm);
+  group.userData.rightArm = rArm;
+  
+  // Left arm
+  const lArm = new THREE.Group();
+  const lSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), sleeveMat);
+  lArm.add(lSleeve);
+  const lForearm = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.35, 0.10), skinMat);
+  lForearm.position.set(0, -0.35, 0);
+  lArm.add(lForearm);
+  const lFist = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), skinMat);
+  lFist.position.set(0, -0.55, 0);
+  lArm.add(lFist);
+  lArm.position.set(-0.35, -0.3, -0.5);
+  lArm.rotation.x = -0.3;
+  group.add(lArm);
+  group.userData.leftArm = lArm;
+  
+  return group;
+}
+
+function updateFirstPersonArms(dt) {
+  if (!fpArms) return;
+  
+  const rArm = fpArms.userData.rightArm;
+  const lArm = fpArms.userData.leftArm;
+  
+  // Default idle position with bob
+  const bobTime = clock ? clock.getElapsedTime() : 0;
+  let bob = 0;
+  if (moveForward || moveBackward || moveLeft || moveRight) {
+    bob = Math.sin(bobTime * (isSprinting ? 12 : 7)) * 0.03;
+  }
+  
+  const baseR = { x: -0.3, y: 0, z: 0, px: 0.35, py: -0.3 + bob, pz: -0.5 };
+  const baseL = { x: -0.3, y: 0, z: 0, px: -0.35, py: -0.3 + bob, pz: -0.5 };
+  
+  switch(playerAnimState) {
+    case 'punch_right':
+      rArm.rotation.x = -1.5;
+      rArm.rotation.z = 0.2;
+      rArm.position.set(0.2, -0.1, -0.9);
+      lArm.rotation.x = baseL.x;
+      lArm.position.set(baseL.px, baseL.py, baseL.pz);
+      break;
+    case 'punch_left':
+      lArm.rotation.x = -1.5;
+      lArm.rotation.z = -0.2;
+      lArm.position.set(-0.2, -0.1, -0.9);
+      rArm.rotation.x = baseR.x;
+      rArm.position.set(baseR.px, baseR.py, baseR.pz);
+      break;
+    case 'kick':
+      rArm.rotation.x = -0.5;
+      rArm.rotation.z = 0.5;
+      rArm.position.set(0.45, -0.2, -0.4);
+      lArm.rotation.x = -0.5;
+      lArm.rotation.z = -0.5;
+      lArm.position.set(-0.45, -0.2, -0.4);
+      break;
+    case 'block':
+      rArm.rotation.x = -1.5;
+      rArm.position.set(0.2, 0.0, -0.5);
+      lArm.rotation.x = -1.5;
+      lArm.position.set(-0.2, 0.0, -0.5);
+      break;
+    case 'throw':
+      rArm.rotation.x = -2.0;
+      rArm.position.set(0.3, 0.1, -0.7);
+      lArm.rotation.x = baseL.x;
+      lArm.position.set(baseL.px, baseL.py, baseL.pz);
+      break;
+    default:
+      rArm.rotation.x = baseR.x;
+      rArm.rotation.z = 0;
+      rArm.position.set(baseR.px, baseR.py, baseR.pz);
+      lArm.rotation.x = baseL.x;
+      lArm.rotation.z = 0;
+      lArm.position.set(baseL.px, baseL.py, baseL.pz);
+  }
+  
+  // Update position to follow camera
+  fpArms.position.copy(camera.position);
+  fpArms.rotation.copy(camera.rotation);
+}
+</script>
+</body>
+</html>
