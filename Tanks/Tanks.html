@@ -599,8 +599,8 @@ const TANK_TYPES = {
 function init() {
     G.clock = new THREE.Clock();
     G.scene = new THREE.Scene();
-    G.scene.background = new THREE.Color(0xd4c4a0);
-    G.scene.fog = new THREE.Fog(0xd4c4a0, 60, 120);
+    G.scene.background = new THREE.Color(0x2a2a28);
+    G.scene.fog = new THREE.Fog(0x2a2a28, 35, 90);
 
     // Renderer
     G.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -609,19 +609,19 @@ function init() {
     G.renderer.shadowMap.enabled = true;
     G.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     G.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    G.renderer.toneMappingExposure = 1.1;
+    G.renderer.toneMappingExposure = 0.75;
     document.body.prepend(G.renderer.domElement);
     G.renderer.domElement.id = 'gameCanvas';
 
     // Camera - first person inside tank
     G.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
 
-    // Lighting
-    G.ambientLight = new THREE.AmbientLight(0xffeedd, 0.6);
+    // Lighting - darker, harsher military feel
+    G.ambientLight = new THREE.AmbientLight(0x889099, 0.35);
     G.scene.add(G.ambientLight);
 
-    G.sunLight = new THREE.DirectionalLight(0xfff5e0, 1.5);
-    G.sunLight.position.set(40, 60, 30);
+    G.sunLight = new THREE.DirectionalLight(0xddd8c8, 1.0);
+    G.sunLight.position.set(30, 45, 20);
     G.sunLight.castShadow = true;
     G.sunLight.shadow.mapSize.width = 2048;
     G.sunLight.shadow.mapSize.height = 2048;
@@ -633,7 +633,7 @@ function init() {
     G.sunLight.shadow.camera.bottom = -60;
     G.scene.add(G.sunLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffeebb, 0x806040, 0.4);
+    const hemiLight = new THREE.HemisphereLight(0x667788, 0x3a3020, 0.3);
     G.scene.add(hemiLight);
 
     // Minimap
@@ -742,6 +742,7 @@ function startMissionFromBriefing() {
     // Build environment
     createFloor();
     createWalls(num - 1);
+    createBattlefieldProps();
     createPlayerTank();
     spawnEnemies(num - 1);
 
@@ -871,41 +872,81 @@ function clearScene() {
     // Re-add lights
     G.scene.add(G.ambientLight);
     G.scene.add(G.sunLight);
-    const hemiLight = new THREE.HemisphereLight(0xffeebb, 0x806040, 0.4);
+    const hemiLight = new THREE.HemisphereLight(0x667788, 0x3a3020, 0.3);
     G.scene.add(hemiLight);
-    G.scene.background = new THREE.Color(0xd4c4a0);
-    G.scene.fog = new THREE.Fog(0xd4c4a0, 60, 120);
+    G.scene.background = new THREE.Color(0x2a2a28);
+    G.scene.fog = new THREE.Fog(0x2a2a28, 35, 90);
 }
 
 // ======================= PLACEHOLDER FUNCTIONS =======================
 // ======================= ENVIRONMENT =======================
 function createFloor() {
-    // Wooden table floor
-    const floorGeo = new THREE.PlaneGeometry(100, 100);
+    // Muddy/dirt battlefield ground
+    const floorGeo = new THREE.PlaneGeometry(100, 100, 40, 40);
     floorGeo.rotateX(-Math.PI / 2);
+    
+    // Subtle terrain variation
+    const verts = floorGeo.attributes.position.array;
+    for (let i = 0; i < verts.length; i += 3) {
+        verts[i + 1] += (Math.random() - 0.5) * 0.1;
+    }
+    floorGeo.computeVertexNormals();
+    
+    // Vertex colors for dirt patches
+    const colors = [];
+    for (let i = 0; i < verts.length; i += 3) {
+        const r = 0.18 + Math.random() * 0.08;
+        const g = 0.16 + Math.random() * 0.06;
+        const b = 0.12 + Math.random() * 0.04;
+        colors.push(r, g, b);
+    }
+    floorGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    
     const floorMat = new THREE.MeshStandardMaterial({
-        color: 0xc8a872, roughness: 0.7, metalness: 0.05
+        vertexColors: true, roughness: 0.95, metalness: 0.0
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.receiveShadow = true;
     floor.position.y = -0.01;
     G.scene.add(floor);
 
-    // Wood grain lines on floor
-    for (let i = 0; i < 20; i++) {
-        const lineGeo = new THREE.PlaneGeometry(100, 0.15);
-        lineGeo.rotateX(-Math.PI / 2);
-        const lineMat = new THREE.MeshStandardMaterial({
-            color: 0xb89858, roughness: 0.8, transparent: true, opacity: 0.3
-        });
-        const line = new THREE.Mesh(lineGeo, lineMat);
-        line.position.set(0, 0.005, -50 + i * 5 + Math.random() * 2);
-        G.scene.add(line);
+    // Scattered tire track marks on ground
+    const trackMat = new THREE.MeshStandardMaterial({
+        color: 0x1a1815, roughness: 1.0, transparent: true, opacity: 0.25
+    });
+    for (let i = 0; i < 12; i++) {
+        const trackGeo = new THREE.PlaneGeometry(0.6 + Math.random() * 0.4, 8 + Math.random() * 12);
+        trackGeo.rotateX(-Math.PI / 2);
+        const track = new THREE.Mesh(trackGeo, trackMat);
+        track.position.set(
+            (Math.random() - 0.5) * 70,
+            0.005,
+            (Math.random() - 0.5) * 70
+        );
+        track.rotation.y = Math.random() * Math.PI;
+        G.scene.add(track);
+    }
+    
+    // Crater marks
+    const craterMat = new THREE.MeshStandardMaterial({
+        color: 0x15120e, roughness: 1.0, transparent: true, opacity: 0.3
+    });
+    for (let i = 0; i < 8; i++) {
+        const size = 1 + Math.random() * 2;
+        const craterGeo = new THREE.CircleGeometry(size, 8);
+        craterGeo.rotateX(-Math.PI / 2);
+        const crater = new THREE.Mesh(craterGeo, craterMat);
+        crater.position.set(
+            (Math.random() - 0.5) * 60,
+            0.006,
+            (Math.random() - 0.5) * 60
+        );
+        G.scene.add(crater);
     }
 
-    // Outer boundary - thick toy wood frame
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.6, metalness: 0.1 });
-    const frameH = 5, frameD = 3;
+    // Outer boundary - reinforced concrete perimeter walls
+    const perimeterMat = new THREE.MeshStandardMaterial({ color: 0x3a3a38, roughness: 0.85, metalness: 0.15 });
+    const frameH = 6, frameD = 3;
     const halfSize = 42;
     const frames = [
         { pos: [0, frameH/2, -halfSize - frameD/2], size: [halfSize*2 + frameD*2, frameH, frameD] },
@@ -915,27 +956,193 @@ function createFloor() {
     ];
     frames.forEach(f => {
         const geo = new THREE.BoxGeometry(f.size[0], f.size[1], f.size[2]);
-        const mesh = new THREE.Mesh(geo, frameMat);
+        const mesh = new THREE.Mesh(geo, perimeterMat);
         mesh.position.set(f.pos[0], f.pos[1], f.pos[2]);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         G.scene.add(mesh);
+        
+        // Steel reinforcement stripe on top
+        const stripGeo = new THREE.BoxGeometry(f.size[0] + 0.2, 0.15, f.size[2] + 0.2);
+        const stripMat = new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.3, metalness: 0.7 });
+        const strip = new THREE.Mesh(stripGeo, stripMat);
+        strip.position.set(f.pos[0], frameH + 0.08, f.pos[2]);
+        G.scene.add(strip);
     });
+    
+    // Barbed wire coils on top of perimeter
+    const wireMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.4, metalness: 0.8 });
+    for (let side = 0; side < 4; side++) {
+        const isHoriz = side < 2;
+        const len = halfSize * 2;
+        for (let w = 0; w < 12; w++) {
+            const wireGeo = new THREE.TorusGeometry(0.3, 0.03, 4, 8);
+            const wire = new THREE.Mesh(wireGeo, wireMat);
+            const pos = -len/2 + w * (len / 11);
+            if (side === 0) wire.position.set(pos, frameH + 0.4, -halfSize - frameD/2);
+            else if (side === 1) wire.position.set(pos, frameH + 0.4, halfSize + frameD/2);
+            else if (side === 2) wire.position.set(-halfSize - frameD/2, frameH + 0.4, pos);
+            else wire.position.set(halfSize + frameD/2, frameH + 0.4, pos);
+            wire.rotation.x = Math.random() * 0.5;
+            wire.rotation.y = Math.random() * Math.PI;
+            G.scene.add(wire);
+        }
+    }
+    
+    // Corner guard towers (decorative pillars)
+    const towerMat = new THREE.MeshStandardMaterial({ color: 0x444440, roughness: 0.7, metalness: 0.3 });
+    const corners = [
+        [-halfSize - 1, -halfSize - 1], [halfSize + 1, -halfSize - 1],
+        [-halfSize - 1, halfSize + 1], [halfSize + 1, halfSize + 1]
+    ];
+    corners.forEach(c => {
+        const pillarGeo = new THREE.CylinderGeometry(1.2, 1.4, frameH + 3, 6);
+        const pillar = new THREE.Mesh(pillarGeo, towerMat);
+        pillar.position.set(c[0], (frameH + 3) / 2, c[1]);
+        pillar.castShadow = true;
+        G.scene.add(pillar);
+        
+        // Searchlight on top
+        const lightHousing = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.3, 0.4, 6),
+            new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 })
+        );
+        lightHousing.position.set(c[0], frameH + 3.5, c[1]);
+        G.scene.add(lightHousing);
+        
+        // Dim yellow point light at each tower
+        const towerLight = new THREE.PointLight(0xffdd88, 0.4, 15);
+        towerLight.position.set(c[0], frameH + 3, c[1]);
+        G.scene.add(towerLight);
+    });
+}
+
+function createBattlefieldProps() {
+    // Czech hedgehog anti-tank obstacles (scattered decorative)
+    const hedgehogMat = new THREE.MeshStandardMaterial({ color: 0x4a4a45, roughness: 0.5, metalness: 0.6 });
+    for (let i = 0; i < 6; i++) {
+        const hGroup = new THREE.Group();
+        const beamLen = 1.8;
+        for (let b = 0; b < 3; b++) {
+            const beamGeo = new THREE.CylinderGeometry(0.08, 0.08, beamLen, 4);
+            const beam = new THREE.Mesh(beamGeo, hedgehogMat);
+            beam.rotation.x = b === 0 ? Math.PI / 4 : (b === 1 ? -Math.PI / 4 : 0);
+            beam.rotation.z = b === 2 ? Math.PI / 2 : (b === 0 ? Math.PI / 6 : -Math.PI / 6);
+            hGroup.add(beam);
+        }
+        hGroup.position.set(
+            (Math.random() - 0.5) * 60,
+            0.6,
+            (Math.random() - 0.5) * 60
+        );
+        hGroup.rotation.y = Math.random() * Math.PI;
+        G.scene.add(hGroup);
+    }
+    
+    // Oil drums / barrels
+    const drumColors = [0x3a5530, 0x4a4a42, 0x553322, 0x334433];
+    for (let i = 0; i < 8; i++) {
+        const drumGeo = new THREE.CylinderGeometry(0.45, 0.45, 1.2, 8);
+        const col = drumColors[Math.floor(Math.random() * drumColors.length)];
+        const drumMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.6, metalness: 0.3 });
+        const drum = new THREE.Mesh(drumGeo, drumMat);
+        drum.position.set(
+            (Math.random() - 0.5) * 65,
+            Math.random() > 0.3 ? 0.6 : 0.22,
+            (Math.random() - 0.5) * 65
+        );
+        // Some barrels tipped over
+        if (Math.random() > 0.5) {
+            drum.rotation.x = Math.PI / 2;
+            drum.position.y = 0.45;
+        }
+        drum.castShadow = true;
+        G.scene.add(drum);
+        
+        // Metal rim ring on drum
+        const rimGeo = new THREE.TorusGeometry(0.45, 0.025, 4, 8);
+        const rimMat = new THREE.MeshStandardMaterial({ color: 0x666660, metalness: 0.8, roughness: 0.3 });
+        const rim = new THREE.Mesh(rimGeo, rimMat);
+        rim.position.copy(drum.position);
+        rim.position.y += 0.3;
+        rim.rotation.copy(drum.rotation);
+        G.scene.add(rim);
+    }
+    
+    // Rubble piles - small rock clusters
+    const rubbleMat = new THREE.MeshStandardMaterial({ color: 0x3a3835, roughness: 0.95, metalness: 0.05 });
+    for (let i = 0; i < 15; i++) {
+        const cx = (Math.random() - 0.5) * 70;
+        const cz = (Math.random() - 0.5) * 70;
+        const numRocks = 2 + Math.floor(Math.random() * 4);
+        for (let r = 0; r < numRocks; r++) {
+            const size = 0.15 + Math.random() * 0.3;
+            const rockGeo = new THREE.DodecahedronGeometry(size, 0);
+            const rock = new THREE.Mesh(rockGeo, rubbleMat);
+            rock.position.set(
+                cx + (Math.random() - 0.5) * 1.5,
+                size * 0.5,
+                cz + (Math.random() - 0.5) * 1.5
+            );
+            rock.rotation.set(Math.random(), Math.random(), Math.random());
+            rock.castShadow = true;
+            G.scene.add(rock);
+        }
+    }
+    
+    // Wooden crate stacks near some walls
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0x4a4030, roughness: 0.85, metalness: 0.05 });
+    for (let i = 0; i < 5; i++) {
+        const cx = (Math.random() - 0.5) * 55;
+        const cz = (Math.random() - 0.5) * 55;
+        const numCrates = 1 + Math.floor(Math.random() * 3);
+        for (let c = 0; c < numCrates; c++) {
+            const cSize = 0.6 + Math.random() * 0.4;
+            const crateGeo = new THREE.BoxGeometry(cSize, cSize, cSize);
+            const crate = new THREE.Mesh(crateGeo, crateMat);
+            crate.position.set(
+                cx + (Math.random() - 0.5) * 1.5,
+                cSize / 2 + (c > 0 ? c * 0.55 : 0),
+                cz + (Math.random() - 0.5) * 1.5
+            );
+            crate.rotation.y = Math.random() * 0.5;
+            crate.castShadow = true;
+            G.scene.add(crate);
+            
+            // Cross strap on crate 
+            const strapGeo = new THREE.BoxGeometry(cSize * 0.9, 0.02, 0.06);
+            const strapMat = new THREE.MeshStandardMaterial({ color: 0x555545, metalness: 0.5, roughness: 0.4 });
+            const strap = new THREE.Mesh(strapGeo, strapMat);
+            strap.position.copy(crate.position);
+            strap.position.z += cSize * 0.51;
+            strap.rotation.y = crate.rotation.y;
+            G.scene.add(strap);
+        }
+    }
 }
 
 function createWalls(mazeIdx) {
     const maze = MAZES[mazeIdx];
-    const wallH = 3.5;
+    const wallH = 4.0;
 
-    // Wood block material with slight color variations
+    // Military wall materials
+    const wallMats = [
+        // Concrete
+        () => new THREE.MeshStandardMaterial({ color: 0x484845 + Math.floor(Math.random() * 0x0a0a0a), roughness: 0.9, metalness: 0.05 }),
+        // Dark concrete
+        () => new THREE.MeshStandardMaterial({ color: 0x3a3a38 + Math.floor(Math.random() * 0x080808), roughness: 0.85, metalness: 0.08 }),
+        // Reinforced (slight metal)
+        () => new THREE.MeshStandardMaterial({ color: 0x404040 + Math.floor(Math.random() * 0x0c0c0c), roughness: 0.6, metalness: 0.25 }),
+    ];
+    
     maze.walls.forEach(w => {
-        // Skip outer boundary walls — those are the frame
+        // Skip outer boundary walls
         if (Math.abs(w.x) > 39 || Math.abs(w.z) > 39) return;
 
         const width = w.w || 2;
         const depth = w.d || 2;
 
-        // Create segmented toy blocks
+        // Create segmented barricade blocks
         const isHorizontal = width > depth;
         const segLen = 3;
         const numSegs = Math.ceil((isHorizontal ? width : depth) / segLen);
@@ -945,10 +1152,7 @@ function createWalls(mazeIdx) {
             const blockD = isHorizontal ? depth : Math.min(segLen, depth - s * segLen);
             if (blockW <= 0 || blockD <= 0) continue;
 
-            const colorVariant = 0xC4A45A + Math.floor(Math.random() * 0x202020);
-            const mat = new THREE.MeshStandardMaterial({
-                color: colorVariant, roughness: 0.65, metalness: 0.05
-            });
+            const mat = wallMats[Math.floor(Math.random() * wallMats.length)]();
 
             const geo = new THREE.BoxGeometry(blockW * 0.95, wallH, blockD * 0.95);
             const mesh = new THREE.Mesh(geo, mat);
@@ -959,12 +1163,84 @@ function createWalls(mazeIdx) {
             mesh.receiveShadow = true;
             G.scene.add(mesh);
 
-            // Add a subtle line/groove on top to show block separation
-            const grooveGeo = new THREE.BoxGeometry(blockW * 0.97, 0.05, blockD * 0.97);
-            const grooveMat = new THREE.MeshStandardMaterial({ color: 0x9a8040, roughness: 0.8 });
-            const groove = new THREE.Mesh(grooveGeo, grooveMat);
-            groove.position.set(offsetX, wallH + 0.02, offsetZ);
-            G.scene.add(groove);
+            // Damage detail - chipped edge
+            if (Math.random() > 0.5) {
+                const chipGeo = new THREE.BoxGeometry(
+                    0.3 + Math.random() * 0.4,
+                    0.5 + Math.random() * 1.0,
+                    0.3 + Math.random() * 0.4
+                );
+                const chipMat = new THREE.MeshStandardMaterial({ color: 0x353530, roughness: 0.95 });
+                const chip = new THREE.Mesh(chipGeo, chipMat);
+                const side = Math.random() > 0.5 ? 1 : -1;
+                chip.position.set(
+                    offsetX + side * blockW * 0.45,
+                    wallH * 0.3 + Math.random() * wallH * 0.5,
+                    offsetZ + (Math.random() - 0.5) * blockD * 0.3
+                );
+                chip.rotation.set(Math.random() * 0.3, Math.random() * 0.5, Math.random() * 0.3);
+                G.scene.add(chip);
+            }
+
+            // Steel reinforcement plate on some blocks
+            if (Math.random() > 0.6) {
+                const plateFace = Math.random() > 0.5;
+                const plateW = plateFace ? blockW * 0.7 : 0.08;
+                const plateD = plateFace ? 0.08 : blockD * 0.7;
+                const plateGeo = new THREE.BoxGeometry(plateW, wallH * 0.6, plateD);
+                const plateMat = new THREE.MeshStandardMaterial({ color: 0x555550, roughness: 0.35, metalness: 0.7 });
+                const plate = new THREE.Mesh(plateGeo, plateMat);
+                plate.position.set(
+                    offsetX + (plateFace ? 0 : (Math.random() > 0.5 ? 1 : -1) * blockW * 0.48),
+                    wallH * 0.45,
+                    offsetZ + (plateFace ? (Math.random() > 0.5 ? 1 : -1) * blockD * 0.48 : 0)
+                );
+                plate.castShadow = true;
+                G.scene.add(plate);
+                
+                // Rivets on plate
+                const rivetMat = new THREE.MeshStandardMaterial({ color: 0x666660, metalness: 0.8, roughness: 0.3 });
+                for (let r = 0; r < 3; r++) {
+                    const rivet = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.04, 4, 4),
+                        rivetMat
+                    );
+                    rivet.position.set(
+                        plate.position.x + (plateFace ? (r - 1) * plateW * 0.35 : 0.05),
+                        wallH * 0.3 + r * wallH * 0.15,
+                        plate.position.z + (plateFace ? 0.05 : (r - 1) * plateD * 0.35)
+                    );
+                    G.scene.add(rivet);
+                }
+            }
+
+            // Sandbags at base of some wall segments
+            if (Math.random() > 0.65) {
+                const sandbagMat = new THREE.MeshStandardMaterial({ color: 0x5a5040, roughness: 0.95, metalness: 0.0 });
+                const numBags = 1 + Math.floor(Math.random() * 3);
+                for (let b = 0; b < numBags; b++) {
+                    const bagGeo = new THREE.BoxGeometry(0.8, 0.3, 0.5);
+                    const bag = new THREE.Mesh(bagGeo, sandbagMat);
+                    const bagSide = Math.random() > 0.5 ? 1 : -1;
+                    bag.position.set(
+                        offsetX + (isHorizontal ? (Math.random() - 0.5) * blockW * 0.6 : bagSide * (blockW * 0.5 + 0.4)),
+                        0.15 + b * 0.28,
+                        offsetZ + (isHorizontal ? bagSide * (blockD * 0.5 + 0.4) : (Math.random() - 0.5) * blockD * 0.6)
+                    );
+                    bag.rotation.y = Math.random() * 0.4;
+                    bag.castShadow = true;
+                    G.scene.add(bag);
+                }
+            }
+
+            // Caution stripe on top
+            const stripGeo = new THREE.BoxGeometry(blockW * 0.97, 0.06, blockD * 0.97);
+            const stripData = Math.random();
+            const stripColor = stripData > 0.7 ? 0x8a7a20 : 0x393935; // yellow hazard or dark
+            const stripMat = new THREE.MeshStandardMaterial({ color: stripColor, roughness: 0.7, metalness: 0.1 });
+            const strip = new THREE.Mesh(stripGeo, stripMat);
+            strip.position.set(offsetX, wallH + 0.02, offsetZ);
+            G.scene.add(strip);
         }
 
         // Store wall bounding box for collision
@@ -977,10 +1253,10 @@ function createWalls(mazeIdx) {
 
     // Add boundary walls to collision
     const halfSize = 42, frameD = 3;
-    G.walls.push({ minX: -halfSize - frameD, maxX: halfSize + frameD, minZ: -halfSize - frameD, maxZ: -halfSize, x:0, z:-halfSize, w:100, d:frameD, h:5 });
-    G.walls.push({ minX: -halfSize - frameD, maxX: halfSize + frameD, minZ: halfSize, maxZ: halfSize + frameD, x:0, z:halfSize, w:100, d:frameD, h:5 });
-    G.walls.push({ minX: -halfSize - frameD, maxX: -halfSize, minZ: -halfSize, maxZ: halfSize, x:-halfSize, z:0, w:frameD, d:100, h:5 });
-    G.walls.push({ minX: halfSize, maxX: halfSize + frameD, minZ: -halfSize, maxZ: halfSize, x:halfSize, z:0, w:frameD, d:100, h:5 });
+    G.walls.push({ minX: -halfSize - frameD, maxX: halfSize + frameD, minZ: -halfSize - frameD, maxZ: -halfSize, x:0, z:-halfSize, w:100, d:frameD, h:6 });
+    G.walls.push({ minX: -halfSize - frameD, maxX: halfSize + frameD, minZ: halfSize, maxZ: halfSize + frameD, x:0, z:halfSize, w:100, d:frameD, h:6 });
+    G.walls.push({ minX: -halfSize - frameD, maxX: -halfSize, minZ: -halfSize, maxZ: halfSize, x:-halfSize, z:0, w:frameD, d:100, h:6 });
+    G.walls.push({ minX: halfSize, maxX: halfSize + frameD, minZ: -halfSize, maxZ: halfSize, x:halfSize, z:0, w:frameD, d:100, h:6 });
 }
 // ======================= PLAYER TANK =======================
 function createPlayerTank() {
@@ -1533,7 +1809,7 @@ function updateMiniMap() {
     ctx.fillRect(0, 0, cw, ch);
 
     // Draw walls
-    ctx.fillStyle = 'rgba(150,130,80,0.6)';
+    ctx.fillStyle = 'rgba(120,120,110,0.7)';
     G.walls.forEach(w => {
         const wx = (w.minX / scale) + cw/2;
         const wz = (w.minZ / scale) + ch/2;
