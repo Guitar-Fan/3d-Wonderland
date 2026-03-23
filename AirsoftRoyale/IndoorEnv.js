@@ -93,17 +93,38 @@ function getIndoorMaterials() {
 }
 
 // ============ INDOOR COLLECTIONS ============
-let indoorObjects = [];  // All THREE.Object3D added, for cleanup
+let indoorObjects = [];       // All THREE.Object3D added, for cleanup
+let indoorPhysicsBodies = []; // Static indoor CANNON bodies to clean on restart
+let indoorMinimapLastUpdateMs = 0;
+let darkModeData = {
+  playerFlashlight: null,
+  playerTarget: null,
+};
+
+const DARK_MODE_FLASHLIGHT_RANGE = 30;
+const DARK_MODE_FLASHLIGHT_ANGLE = Math.PI / 9;
+const DARK_MODE_FLASHLIGHT_PENUMBRA = 0.5;
 
 function addIndoorObj(obj) {
   indoorObjects.push(obj);
   Game.scene.add(obj);
 }
 
+function addIndoorPhysBox(w, h, d, x, y, z) {
+  addPhysBox(w, h, d, x, y, z);
+  if (Game.world && Game.world.bodies.length > 0) {
+    indoorPhysicsBodies.push(Game.world.bodies[Game.world.bodies.length - 1]);
+  }
+}
+
 // ============ MASTER BUILD FUNCTION ============
 function buildIndoorEnvironment() {
+  // Prevent duplicate indoor meshes/bodies when restarting indoor matches.
+  clearIndoorEnvironment();
   getIndoorMaterials();
   indoorObjects = [];
+  indoorPhysicsBodies = [];
+  indoorMinimapLastUpdateMs = 0;
 
   createFacilityShell();
   createFloor();
@@ -128,6 +149,24 @@ function clearIndoorEnvironment() {
     }
   });
   indoorObjects = [];
+
+  if (Game.world) {
+    indoorPhysicsBodies.forEach(body => {
+      if (body && Game.world.bodies.includes(body)) {
+        Game.world.removeBody(body);
+      }
+    });
+  }
+  indoorPhysicsBodies = [];
+
+  if (darkModeData.playerFlashlight && Game.camera) {
+    Game.camera.remove(darkModeData.playerFlashlight);
+  }
+  if (darkModeData.playerTarget && Game.camera) {
+    Game.camera.remove(darkModeData.playerTarget);
+  }
+  darkModeData.playerFlashlight = null;
+  darkModeData.playerTarget = null;
 }
 
 // ============ FACILITY SHELL ============
@@ -154,7 +193,7 @@ function createFacilityShell() {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     addIndoorObj(mesh);
-    addPhysBox(w, h, d, x, y, z);
+    addIndoorPhysBox(w, h, d, x, y, z);
   });
 
   // Ceiling
@@ -163,7 +202,7 @@ function createFacilityShell() {
   ceilMesh.position.set(0, H, 0);
   ceilMesh.receiveShadow = true;
   addIndoorObj(ceilMesh);
-  addPhysBox(S + T * 2, 0.3, S + T * 2, 0, H, 0);
+  addIndoorPhysBox(S + T * 2, 0.3, S + T * 2, 0, H, 0);
 
   // Block the sky — large dark box above
   const skyBlockGeo = new THREE.BoxGeometry(S * 3, 1, S * 3);
@@ -374,17 +413,17 @@ function createWallSegment(x, z, len, height, thickness, rotation, material) {
   // Physics — approximate for rotated walls
   if (Math.abs(rotation) < 0.01 || Math.abs(rotation - Math.PI) < 0.01) {
     // Axis-aligned (east-west)
-    addPhysBox(len, height, thickness, x, height / 2, z);
+    addIndoorPhysBox(len, height, thickness, x, height / 2, z);
   } else if (Math.abs(rotation - Math.PI / 2) < 0.01 || Math.abs(rotation + Math.PI / 2) < 0.01) {
     // Axis-aligned (north-south)
-    addPhysBox(thickness, height, len, x, height / 2, z);
+    addIndoorPhysBox(thickness, height, len, x, height / 2, z);
   } else {
     // Angled wall — approximate with AABB bounding box
     const cosR = Math.abs(Math.cos(rotation));
     const sinR = Math.abs(Math.sin(rotation));
     const bw = len * cosR + thickness * sinR;
     const bd = len * sinR + thickness * cosR;
-    addPhysBox(bw, height, bd, x, height / 2, z);
+    addIndoorPhysBox(bw, height, bd, x, height / 2, z);
   }
 }
 
@@ -453,7 +492,7 @@ function createCrateObj(x, y, z, w, h, d, rot) {
   addIndoorObj(line2);
 
   // Physics
-  addPhysBox(w, h, d, x, y, z);
+  addIndoorPhysBox(w, h, d, x, y, z);
 }
 
 // ============ TIRE STACKS ============
@@ -480,7 +519,7 @@ function createTireStacks() {
       addIndoorObj(tire);
     }
     // Physics approximation (cylinder)
-    addPhysBox(1.6, stackH * 0.55, 1.6, x, (stackH * 0.55) / 2, z);
+    addIndoorPhysBox(1.6, stackH * 0.55, 1.6, x, (stackH * 0.55) / 2, z);
   });
 }
 
@@ -513,9 +552,9 @@ function createBarrels() {
 
     // Physics
     if (knocked) {
-      addPhysBox(1.5, 1, 1, x, 0.5, z);
+      addIndoorPhysBox(1.5, 1, 1, x, 0.5, z);
     } else {
-      addPhysBox(1, 1.5, 1, x, 0.75, z);
+      addIndoorPhysBox(1, 1.5, 1, x, 0.75, z);
     }
   });
 }
@@ -603,14 +642,14 @@ function createDecorations() {
   vm.position.set(INDOOR_HALF - 2, 1.1, -INDOOR_HALF + 2);
   vm.castShadow = true;
   addIndoorObj(vm);
-  addPhysBox(1.2, 2.2, 0.8, INDOOR_HALF - 2, 1.1, -INDOOR_HALF + 2);
+  addIndoorPhysBox(1.2, 2.2, 0.8, INDOOR_HALF - 2, 1.1, -INDOOR_HALF + 2);
 
   // Another vending machine in opposite corner
   const vm2 = new THREE.Mesh(vmGeo.clone(), new THREE.MeshStandardMaterial({ color: 0xAA2222, roughness: 0.4, metalness: 0.3 }));
   vm2.position.set(-INDOOR_HALF + 2, 1.1, INDOOR_HALF - 2);
   vm2.castShadow = true;
   addIndoorObj(vm2);
-  addPhysBox(1.2, 2.2, 0.8, -INDOOR_HALF + 2, 1.1, INDOOR_HALF - 2);
+  addIndoorPhysBox(1.2, 2.2, 0.8, -INDOOR_HALF + 2, 1.1, INDOOR_HALF - 2);
 
   // Corrugated metal accent panels (industrial look, scattered)
   const corrPanels = [
@@ -626,8 +665,8 @@ function createDecorations() {
     pMesh.castShadow = true;
     addIndoorObj(pMesh);
     // Thin decorative — add physics for cover
-    if (cp.rot === 0) addPhysBox(cp.w, cp.h, 0.15, cp.x, cp.h / 2, cp.z);
-    else addPhysBox(0.15, cp.h, cp.w, cp.x, cp.h / 2, cp.z);
+    if (cp.rot === 0) addIndoorPhysBox(cp.w, cp.h, 0.15, cp.x, cp.h / 2, cp.z);
+    else addIndoorPhysBox(0.15, cp.h, cp.w, cp.x, cp.h / 2, cp.z);
   });
 
   // Caution tape on floor near spawn exits
@@ -655,7 +694,7 @@ function createBench(x, z) {
     leg.position.set(x + lx, 0.275, lz);
     addIndoorObj(leg);
   });
-  addPhysBox(0.6, 0.55, 2.5, x, 0.275, z);
+  addIndoorPhysBox(0.6, 0.55, 2.5, x, 0.275, z);
 }
 
 // ============ SPAWN AREAS ============
@@ -682,17 +721,24 @@ function createSpawnAreas() {
 // Indoor arenas typically have overhead fluorescent / industrial lights
 // No sunlight, no sky — everything is artificial
 function setupIndoorLighting() {
+  // Dark mode uses minimal ambient and tactical flashlights.
+  if (Game.darkMode) {
+    setupIndoorDarkLighting();
+    return;
+  }
+
   // Remove outdoor lights by swapping scene fog & background
   Game.scene.background = new THREE.Color(0x111111);
   Game.scene.fog = new THREE.FogExp2(0x111111, 0.008);
 
   // Overhead fluorescent light strips (PointLights simulating tube lights)
   const lightColor = 0xFFEEDD;  // Warm white (typical indoor)
-  const lightIntensity = 0.8;
-  const lightDist = 40;
+  const lightIntensity = 0.65;
+  const lightDist = 36;
 
   // Grid of overhead lights
-  const spacing = 20;
+  // Larger spacing keeps the look while reducing expensive light count.
+  const spacing = 30;
   for (let x = -INDOOR_HALF + spacing / 2; x <= INDOOR_HALF - spacing / 2; x += spacing) {
     for (let z = -INDOOR_HALF + spacing / 2; z <= INDOOR_HALF - spacing / 2; z += spacing) {
       const light = new THREE.PointLight(lightColor, lightIntensity, lightDist, 1.5);
@@ -701,7 +747,7 @@ function setupIndoorLighting() {
       addIndoorObj(light);
 
       // Light fixture mesh (simple box)
-      const fixGeo = new THREE.BoxGeometry(2, 0.15, 0.5);
+      const fixGeo = new THREE.BoxGeometry(1.6, 0.12, 0.4);
       const fixMat = new THREE.MeshStandardMaterial({
         color: 0xDDDDDD, roughness: 0.3, metalness: 0.5,
         emissive: 0xFFEEDD, emissiveIntensity: 0.6
@@ -724,6 +770,101 @@ function setupIndoorLighting() {
   // Ambient to ensure nothing is pitch black
   const ambient = new THREE.AmbientLight(0x444444, 0.6);
   addIndoorObj(ambient);
+}
+
+function setupIndoorDarkLighting() {
+  // Push unlit areas close to black so flashlight beams dominate visibility.
+  Game.scene.background = new THREE.Color(0x000000);
+  Game.scene.fog = new THREE.FogExp2(0x000000, 0.06);
+
+  // Near-zero ambient to keep non-beam areas extremely dark.
+  const ambient = new THREE.AmbientLight(0x020304, 0.006);
+  addIndoorObj(ambient);
+
+  // Tiny emergency glows only at spawn corners.
+  const emergencyA = new THREE.PointLight(0x1b2a44, 0.008, 4, 2.6);
+  emergencyA.position.set(-INDOOR_HALF + 8, FACILITY_CEILING - 1, -INDOOR_HALF + 8);
+  addIndoorObj(emergencyA);
+
+  const emergencyB = new THREE.PointLight(0x3a1a1a, 0.008, 4, 2.6);
+  emergencyB.position.set(INDOOR_HALF - 8, FACILITY_CEILING - 1, INDOOR_HALF - 8);
+  addIndoorObj(emergencyB);
+
+  createPlayerFlashlight();
+}
+
+function createPlayerFlashlight() {
+  if (!Game.camera) return;
+
+  if (darkModeData.playerFlashlight) Game.camera.remove(darkModeData.playerFlashlight);
+  if (darkModeData.playerTarget) Game.camera.remove(darkModeData.playerTarget);
+
+  const light = new THREE.SpotLight(0xe6f2ff, 2.6, DARK_MODE_FLASHLIGHT_RANGE + 6, DARK_MODE_FLASHLIGHT_ANGLE, DARK_MODE_FLASHLIGHT_PENUMBRA, 1.35);
+  light.castShadow = false;
+  light.position.set(0, 0.18, 0.08);
+
+  const target = new THREE.Object3D();
+  target.position.set(0, 0.0, -10);
+
+  Game.camera.add(light);
+  Game.camera.add(target);
+  light.target = target;
+
+  darkModeData.playerFlashlight = light;
+  darkModeData.playerTarget = target;
+}
+
+function addEnemyFlashlight(enemy) {
+  const headLamp = new THREE.SpotLight(0xccddff, 1.55, 26, DARK_MODE_FLASHLIGHT_ANGLE, DARK_MODE_FLASHLIGHT_PENUMBRA, 1.7);
+  headLamp.castShadow = false;
+  headLamp.position.set(0, 1.62, 0.02);
+
+  const target = new THREE.Object3D();
+  target.position.set(0, 1.4, -8);
+
+  enemy.mesh.add(headLamp);
+  enemy.mesh.add(target);
+  headLamp.target = target;
+
+  // Small lamp lens for readability in darkness.
+  const lampGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xaaccff });
+  const lampMesh = new THREE.Mesh(lampGeo, lampMat);
+  lampMesh.position.set(0, 1.62, -0.18);
+  enemy.mesh.add(lampMesh);
+
+  enemy.flashlight = headLamp;
+  enemy.flashlightTarget = target;
+}
+
+function isPlayerInEnemyFlashlight(enemy) {
+  if (!enemy.flashlight || !enemy.flashlightTarget) return false;
+  if (!Game.player.isAlive) return false;
+
+  const source = new THREE.Vector3();
+  const target = new THREE.Vector3();
+  const toPlayer = new THREE.Vector3();
+  const beamDir = new THREE.Vector3();
+
+  enemy.flashlight.getWorldPosition(source);
+  enemy.flashlightTarget.getWorldPosition(target);
+  beamDir.subVectors(target, source).normalize();
+  toPlayer.subVectors(Game.camera.position, source);
+
+  const dist = toPlayer.length();
+  if (dist > enemy.flashlight.distance) return false;
+  if (dist < 0.001) return true;
+
+  toPlayer.normalize();
+  const angleCos = beamDir.dot(toPlayer);
+  const threshold = Math.cos(enemy.flashlight.angle);
+  if (angleCos < threshold) return false;
+
+  if (typeof hasLineOfSight === 'function' && !hasLineOfSight(source, Game.camera.position)) {
+    return false;
+  }
+
+  return true;
 }
 
 // ============ INDOOR AI BEHAVIOR ============
@@ -826,6 +967,10 @@ function spawnIndoorEnemies() {
       isHolding: false,      // Camping / holding a position
       cornerCheckTimer: 0,   // Pause at corners
     });
+
+    if (Game.darkMode) {
+      addEnemyFlashlight(Game.enemies[Game.enemies.length - 1]);
+    }
   }
 }
 
@@ -852,16 +997,16 @@ function updateIndoorEnemies(dt) {
     const dirToPlayer = new THREE.Vector3().subVectors(playerPos, ePos).normalize();
 
     // ---- DETECTION (shorter range indoors, but can "hear" shots) ----
-    const detectRange = 35; // Short detection in tight corridors
+    const detectRange = Game.darkMode ? 0 : 35; // Dark mode uses flashlight cone detection
     const hearRange = 50;   // Can hear gunfire further
 
     // Check if player recently fired (within last 2 seconds)
     const playerRecentlyFired = Game.weapon && Game.weapon.fireTimer > -0.5;
 
-    if (dist < detectRange && Game.player.isAlive) {
+    if ((Game.darkMode && isPlayerInEnemyFlashlight(enemy)) || (dist < detectRange && Game.player.isAlive)) {
       enemy.state = 'engage';
       enemy.alertTimer = 6;
-    } else if (dist < hearRange && playerRecentlyFired && Game.player.isAlive) {
+    } else if (!Game.darkMode && dist < hearRange && playerRecentlyFired && Game.player.isAlive) {
       // Heard gunfire — investigate
       enemy.state = 'investigate';
       enemy.alertTimer = 4;
@@ -898,6 +1043,13 @@ function updateIndoorEnemies(dt) {
     enemy.body.position.x = Math.max(-bound, Math.min(bound, enemy.body.position.x));
     enemy.body.position.z = Math.max(-bound, Math.min(bound, enemy.body.position.z));
   });
+}
+
+function updateDarkMode(dt) {
+  // Keep player headlamp stable and subtle while sprinting.
+  if (!Game.darkMode || !darkModeData.playerFlashlight) return;
+  const moveFactor = Game.player.isSprinting ? 0.08 : 0.03;
+  darkModeData.playerFlashlight.intensity = 2.35 + Math.sin(Game.clock.elapsedTime * 10) * moveFactor;
 }
 
 function indoorPatrol(enemy, dt) {
@@ -1194,6 +1346,11 @@ function respawnIndoorPlayer() {
 function updateIndoorMinimap() {
   const ctx = Game.minimapCtx;
   if (!ctx) return;
+
+  // Indoor minimap is intentionally throttled to reduce per-frame UI work.
+  const now = performance.now();
+  if (now - indoorMinimapLastUpdateMs < 80) return;
+  indoorMinimapLastUpdateMs = now;
 
   const size = 160;
   const scale = size / INDOOR_SIZE;
