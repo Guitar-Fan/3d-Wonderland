@@ -31,6 +31,14 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 #aimOverlay::before { content: ''; position: absolute; inset: 10% 8%; border: 1px solid rgba(255,90,90,0.45); box-shadow: 0 0 20px rgba(255,80,80,0.25), inset 0 0 30px rgba(255,80,80,0.08); }
 #aimTimer { position: absolute; top: 30px; right: 40px; color: #ff6666; font-size: 24px; text-shadow: 0 0 14px #ff3333; letter-spacing: 3px; }
 #aimModeLabel { position: absolute; top: 30px; left: 40px; color: #ff8888; font-size: 14px; letter-spacing: 2px; text-shadow: 0 0 10px #ff3333; }
+#detonateHint { position: fixed; left: 50%; bottom: 130px; transform: translateX(-50%); z-index: 16; display: none; pointer-events: none; }
+#detonateHint.active { display: block; }
+#detonateHint .kbd { font-size: 56px; line-height: 1; font-weight: bold; color: #ffeded; letter-spacing: 4px; text-shadow: 0 0 14px #ff4444, 0 0 24px #ff4444; animation: detPulse 0.7s ease-in-out infinite; }
+#detonateHint .txt { text-align: center; margin-top: 6px; color: #ff8a8a; font-size: 13px; letter-spacing: 2px; text-shadow: 0 0 8px #ff4444; }
+@keyframes detPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.82; } }
+#flightModeLabel { position: absolute; top: 56px; right: 20px; color: #66f2ff; font-size: 12px; letter-spacing: 2px; text-shadow: 0 0 8px #00d5ff; }
+#sensorReadout { position: absolute; top: 84px; right: 20px; color: #ff9999; font-size: 12px; letter-spacing: 1px; text-shadow: 0 0 8px #ff3333; text-align: right; min-width: 180px; }
+#leadIndicator { position: absolute; width: 26px; height: 26px; border: 2px dashed #ffcc33; border-radius: 50%; box-shadow: 0 0 10px #ffaa00; display: none; transform: translate(-50%, -50%); }
 
 /* Dashboard */
 #dashboard { position: fixed; bottom: 0; left: 0; width: 100%; height: 110px; background: linear-gradient(to bottom, rgba(20,25,30,0.85), rgba(10,12,15,0.95)); border-top: 1px solid #00ff8855; z-index: 8; pointer-events: none; display: flex; justify-content: space-around; align-items: center; padding: 10px 20px; }
@@ -53,7 +61,7 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 .mission-card p { color: #00ff8888; font-size: 12px; }
 
 /* Notifications */
-#notification { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); color: #00ff88; font-size: 24px; text-shadow: 0 0 20px #00ff88; z-index: 20; opacity: 0; transition: opacity 0.5s; text-align: center; pointer-events: none; }
+#notification { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); color: #00ff88; font-size: 24px; text-shadow: 0 0 20px #00ff88; z-index: 20; opacity: 0; transition: opacity 0.5s; text-align: center; pointer-events: none; white-space: pre-line; }
 #killFeed { position: fixed; top: 150px; right: 30px; z-index: 20; pointer-events: none; }
 .kill-entry { color: #ff8800; font-size: 14px; text-shadow: 0 0 10px #ff8800; opacity: 1; transition: opacity 1s; margin: 4px 0; }
 
@@ -107,8 +115,11 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
     </div>
     <div id="missionInfo" class="hud-text"></div>
     <div id="gameTime" class="hud-text" style="position: absolute; top: 20px; right: 20px; font-size: 20px; font-weight: bold; color: #00ff88;">12:00</div>
+    <div id="flightModeLabel">MODE: ASSISTED</div>
+    <div id="sensorReadout">CLOSURE +000 m/s</div>
     <div id="warningText">WARNING</div>
     <div id="lockIndicator"></div>
+    <div id="leadIndicator"></div>
     <div id="radarContainer"><canvas id="radarCanvas" width="180" height="180"></canvas></div>
 </div>
 
@@ -116,6 +127,10 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 <div id="aimOverlay">
     <div id="aimModeLabel">MISSILE TARGETING MODE</div>
     <div id="aimTimer">03.0</div>
+</div>
+<div id="detonateHint">
+    <div class="kbd">SPACE</div>
+    <div class="txt">PRESS TO DETONATE</div>
 </div>
 
 <!-- Dashboard -->
@@ -162,11 +177,12 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 <div id="killFeed"></div>
 
 <div id="controlsHelp">
-    W/S or Mouse - Pitch | A/D or Mouse - Roll<br>
+    W/S - Pitch | A/D - Roll<br>
     Q/E - Yaw | Shift/Ctrl - Throttle<br>
     SPACE / Left Click - Missile Aim Mode<br>
     Left Click / Touch - Fire During Aim | X - Detonate Missiles<br>
-    F - Flares | G - Fire Cannon | V - View<br>
+    M - Flight Mode | ESC - Exit Missile Cam<br>
+    F - Flares | G - Fire Cannon<br>
     TAB - Lock Target | R - Reload
 </div>
 
@@ -178,7 +194,7 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 const G = {
     scene: null, camera: null, renderer: null, clock: null,
     jet: null, jetGroup: null,
-    speed: 0, throttle: 0.3, maxSpeed: 400,
+    speed: 0, throttle: 0.3, maxSpeed: 160,
     pitch: 0, roll: 0, yaw: 0,
     pitchRate: 0, rollRate: 0, yawRate: 0,
     altitude: 500, heading: 0,
@@ -204,12 +220,35 @@ const G = {
     started: false,
     enemyMissiles: [],
     warningTimer: 0,
+    flightMode: 1, // 0=Arcade, 1=Assisted, 2=Sim
+    flightModeName: 'ASSISTED',
+    beginnerFlightAssist: true,
+    inputDeadzone: 0.12,
+    autoLevelStrength: 2.2,
+    stabilityDamping: 4.5,
+    pitchResponse: 7.0,
+    sensorClosure: 0,
+    sensorDistance: 0,
+    lastFrameDt: 0.016,
+    leadPoint: null,
+    missionStartTime: 0,
+    missionEvents: [],
+    shotsMissile: 0,
+    hitsMissile: 0,
+    shotsCannon: 0,
+    hitsCannon: 0,
+    scoreDebriefShown: false,
     timeScale: 1,
     missileAimMode: false,
     missileAimCountdown: 0,
     missileAimCandidates: [],
     missileAimCrosshair: { x: 0, y: 0 },
     missileAimBaseFov: 70,
+    missileCamActive: false,
+    missileCamMissile: null,
+    postDetonationCamActive: false,
+    postDetonationCamPos: null,
+    postDetonationCamTimer: 0,
     // Day/Night Cycle
     gameTime: 12, // 0-24 hours
     daySpeed: 0.1, // Hours per second
@@ -280,6 +319,7 @@ function init() {
     
     // Input
     setupInput();
+    setFlightMode(G.flightMode);
     
     window.addEventListener('resize', onResize);
     
@@ -808,7 +848,7 @@ function createEnemyJet(x, y, z, type='jet') {
     
     const enemy = {
         group, type, health: type === 'jet' ? 50 : 25,
-        speed: type === 'jet' ? (80 + Math.random() * 60) : (30 + Math.random() * 30),
+        speed: type === 'jet' ? (35 + Math.random() * 30) : (12 + Math.random() * 16),
         vx: 0, vy: 0, vz: 0,
         targetPos: new THREE.Vector3(
             (Math.random()-0.5) * 1500,
@@ -819,6 +859,15 @@ function createEnemyJet(x, y, z, type='jet') {
         alive: true,
         shootTimer: type === 'jet' ? 3 + Math.random() * 5 : 999,
         aggroRange: type === 'jet' ? 800 : 500,
+        skill: type === 'jet' ? (0.7 + Math.random() * 0.6) : (0.35 + Math.random() * 0.3),
+        aiState: 'patrol',
+        aiStateTimer: 2 + Math.random() * 4,
+        preferredOffset: new THREE.Vector3(
+            (Math.random()-0.5) * 220,
+            -40 + Math.random() * 120,
+            -140 - Math.random() * 220
+        ),
+        breakDir: Math.random() > 0.5 ? 1 : -1,
         evadeTimer: 0,
         hitFlash: 0
     };
@@ -882,9 +931,11 @@ function spawnMissionEnemies(missionNum) {
     }
 }
 
-function fireMissile(targetOverride = null) {
-    if (G.missiles <= 0) return;
+function fireMissile(targetOverride = null, launchDirOverride = null) {
+    if (G.missiles <= 0) return null;
     G.missiles--;
+    G.shotsMissile++;
+    recordMissionEvent('Missile launched');
     document.getElementById('mslVal').textContent = G.missiles;
     
     // Remove a visible pylon missile
@@ -922,22 +973,33 @@ function fireMissile(targetOverride = null) {
     // Position at jet
     const jetPos = G.jetGroup.position.clone();
     const jetDir = new THREE.Vector3(0, 0, -1).applyQuaternion(G.jetGroup.quaternion);
+    const launchDir = launchDirOverride ? launchDirOverride.clone().normalize() : jetDir.clone();
     missileGroup.position.copy(jetPos).add(jetDir.multiplyScalar(10));
-    missileGroup.quaternion.copy(G.jetGroup.quaternion);
+
+    const lookMatrix = new THREE.Matrix4().lookAt(
+        missileGroup.position,
+        missileGroup.position.clone().add(launchDir),
+        new THREE.Vector3(0, 1, 0)
+    );
+    missileGroup.quaternion.copy(new THREE.Quaternion().setFromRotationMatrix(lookMatrix));
     
     G.scene.add(missileGroup);
     
-    const velocity = new THREE.Vector3(0, 0, -1).applyQuaternion(G.jetGroup.quaternion).multiplyScalar(G.speed + 200);
+    const missileSpeed = G.maxSpeed * 5;
+    const velocity = launchDir.clone().multiplyScalar(missileSpeed);
     
-    G.activeMissiles.push({
+    const missileData = {
         group: missileGroup,
         velocity: velocity,
         target: targetOverride || G.lockedTarget,
         life: 8,
-        speed: G.speed + 250,
+        speed: missileSpeed,
         isPlayer: true,
         trailPositions: []
-    });
+    };
+
+    G.activeMissiles.push(missileData);
+    return missileData;
 }
 
 function fireEnemyMissile(enemy) {
@@ -976,6 +1038,7 @@ function fireEnemyMissile(enemy) {
 function fireCannon() {
     if (G.cannonCooldown > 0) return;
     G.cannonCooldown = 0.08;
+    G.shotsCannon++;
     
     const bulletGeo = new THREE.SphereGeometry(0.2, 4, 4);
     const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff44 });
@@ -1098,12 +1161,63 @@ function addKillFeedEntry(text) {
     if (feed.children.length > 5) feed.lastChild.remove();
 }
 
+function setFlightMode(mode) {
+    const modes = [
+        { name: 'ARCADE', deadzone: 0.05, autoLevel: 2.8, damping: 5.4, response: 8.2, assist: true },
+        { name: 'ASSISTED', deadzone: 0.12, autoLevel: 2.2, damping: 4.5, response: 7.0, assist: true },
+        { name: 'SIM', deadzone: 0.03, autoLevel: 0.4, damping: 2.0, response: 5.4, assist: false }
+    ];
+    const cfg = modes[Math.max(0, Math.min(2, mode))];
+    G.flightMode = Math.max(0, Math.min(2, mode));
+    G.flightModeName = cfg.name;
+    G.inputDeadzone = cfg.deadzone;
+    G.autoLevelStrength = cfg.autoLevel;
+    G.stabilityDamping = cfg.damping;
+    G.pitchResponse = cfg.response;
+    G.beginnerFlightAssist = cfg.assist;
+    const modeLabel = document.getElementById('flightModeLabel');
+    if (modeLabel) modeLabel.textContent = `MODE: ${cfg.name}`;
+}
+
+function recordMissionEvent(text) {
+    if (!G.missionActive) return;
+    const t = (performance.now() - G.missionStartTime) / 1000;
+    G.missionEvents.push(`${t.toFixed(1)}s - ${text}`);
+}
+
+function calculateMissionDebrief() {
+    const elapsed = Math.max(1, (performance.now() - G.missionStartTime) / 1000);
+    const totalShots = G.shotsMissile + G.shotsCannon;
+    const totalHits = G.hitsMissile + G.hitsCannon;
+    const accuracy = totalShots > 0 ? totalHits / totalShots : 1;
+    const timeScore = Math.max(0, 100 - elapsed * 1.4);
+    const accuracyScore = Math.round(accuracy * 100);
+    const survivalScore = Math.round(Math.max(0, G.hull));
+    const objectiveScore = Math.min(100, Math.round((G.missionKills / Math.max(1, G.missionTargets)) * 100));
+    const total = Math.round(timeScore * 0.2 + accuracyScore * 0.25 + survivalScore * 0.2 + objectiveScore * 0.35);
+    let grade = 'D';
+    if (total >= 90) grade = 'S';
+    else if (total >= 80) grade = 'A';
+    else if (total >= 70) grade = 'B';
+    else if (total >= 60) grade = 'C';
+    return { elapsed, accuracyScore, survivalScore, objectiveScore, total, grade };
+}
+
 function setupInput() {
     document.addEventListener('keydown', e => {
         G.keys[e.key.toLowerCase()] = true;
+        if (e.key === 'Escape' && G.missileCamActive) {
+            e.preventDefault();
+            stopMissileCameraFollow();
+            return;
+        }
         if (e.key === ' ') {
             e.preventDefault();
             if (!G.started) return;
+            if (G.missileCamActive) {
+                detonateMissiles();
+                return;
+            }
             if (G.missileAimMode) {
                 fireMissileFromAim();
             } else {
@@ -1112,6 +1226,10 @@ function setupInput() {
         }
         if (e.key.toLowerCase() === 'x') { detonateMissiles(); }
         if (e.key.toLowerCase() === 'f') deployFlares();
+        if (e.key.toLowerCase() === 'm') {
+            setFlightMode((G.flightMode + 1) % 3);
+            showNotification(`FLIGHT MODE: ${G.flightModeName}`, 1200);
+        }
         if (e.key.toLowerCase() === 'v') {
             G.cameraMode = (G.cameraMode + 1) % 3;
             showNotification(['CHASE CAM', 'COCKPIT CAM', 'FAR CAM'][G.cameraMode], 1500);
@@ -1143,17 +1261,6 @@ function setupInput() {
         if (G.missileAimMode) {
             G.missileAimCrosshair.x = Math.max(-0.8, Math.min(0.8, G.mousePos.x));
             G.missileAimCrosshair.y = Math.max(-0.8, Math.min(0.8, G.mousePos.y));
-        }
-        
-        // Use mouse for pitch/yaw if stick not used
-        if (G.started) {
-             const pitchStr = -G.mousePos.y * 1.5;
-             if (Math.abs(pitchStr) > 0.1) G.keys['mouse_pitch'] = pitchStr;
-             else delete G.keys['mouse_pitch'];
-             
-             const rollStr = G.mousePos.x * 1.5;
-             if (Math.abs(rollStr) > 0.1) G.keys['mouse_roll'] = rollStr;
-             else delete G.keys['mouse_roll'];
         }
     });
     document.addEventListener('touchstart', e => {
@@ -1246,25 +1353,74 @@ function getAimSelectedTarget() {
 
 function fireMissileFromAim() {
     const selectedTarget = getAimSelectedTarget();
-    fireMissile(selectedTarget || G.lockedTarget);
+    const aimNdc = new THREE.Vector3(G.missileAimCrosshair.x, G.missileAimCrosshair.y, 0.2);
+    const aimWorld = aimNdc.unproject(G.camera);
+    const aimDirection = aimWorld.sub(G.camera.position).normalize();
+
+    const firedMissile = fireMissile(null, aimDirection);
+    if (selectedTarget) {
+        showNotification('TRAJECTORY SET - DETONATE NEAR TARGET', 900);
+    }
     endMissileAimMode();
+    if (firedMissile) startMissileCameraFollow(firedMissile);
+}
+
+function startMissileCameraFollow(missile) {
+    if (!missile || !missile.isPlayer) return;
+    G.missileCamActive = true;
+    G.missileCamMissile = missile;
+    G.timeScale = 0.5;
+}
+
+function stopMissileCameraFollow() {
+    if (!G.missileCamActive) return;
+    G.missileCamActive = false;
+    G.missileCamMissile = null;
+    if (!G.missileAimMode && !G.postDetonationCamActive) G.timeScale = 1;
+}
+
+function startPostDetonationCamera(position) {
+    if (!position) return;
+    G.postDetonationCamActive = true;
+    G.postDetonationCamPos = position.clone();
+    G.postDetonationCamTimer = 2;
+    G.timeScale = 0.1;
+}
+
+function stopPostDetonationCamera() {
+    if (!G.postDetonationCamActive) return;
+    G.postDetonationCamActive = false;
+    G.postDetonationCamPos = null;
+    G.postDetonationCamTimer = 0;
+    if (!G.missileAimMode && !G.missileCamActive) G.timeScale = 1;
 }
 
 function detonateMissiles() {
     if (G.activeMissiles.length === 0) return;
+    const blastRadius = 30;
+    let lingerPos = null;
     
     // Detonate all player missiles
     for (let i = G.activeMissiles.length - 1; i >= 0; i--) {
         const m = G.activeMissiles[i];
         if (m.isPlayer) {
-            createExplosion(m.group.position, 2); // Visual
-            checkExplosionDamage(m.group.position, 60); // 60m radius
+            const blastPos = m.group.position.clone();
+
+            // Apply gameplay effect immediately at detonation moment.
+            checkExplosionDamage(blastPos, blastRadius);
+            createExplosion(blastPos, blastRadius / 20);
+
+            if (!lingerPos || G.missileCamMissile === m) lingerPos = blastPos;
             
             // Remove missile
             G.scene.remove(m.group);
             G.activeMissiles.splice(i, 1);
         }
     }
+
+    if (G.missileCamActive) stopMissileCameraFollow();
+    if (lingerPos) startPostDetonationCamera(lingerPos);
+
     showNotification('MISSILES DETONATED', 1000);
 }
 
@@ -1293,6 +1449,7 @@ function checkExplosionDamage(pos, radius) {
 
 function damageEnemy(e) {
     if (!e.alive) return;
+    G.hitsMissile++;
     createExplosion(e.group.position, 1);
     e.alive = false;
     G.scene.remove(e.group);
@@ -1307,11 +1464,13 @@ function damageEnemy(e) {
     
     if (G.missionActive) {
         G.missionKills++;
+        recordMissionEvent(`${e.type.toUpperCase()} kill (splash)`);
     }
 }
 
 function damageBuilding(b) {
     if (b.destroyed) return;
+    G.hitsMissile++;
     b.health -= 100; // Instakill for now
     if (b.health <= 0) {
         b.destroyed = true;
@@ -1324,7 +1483,10 @@ function damageBuilding(b) {
         b.group.remove(b.marker);
         G.scene.remove(b.marker); // Just in case
         showNotification('TARGET DESTROYED', 1500);
-        if (G.missionActive) G.missionKills++;
+        if (G.missionActive) {
+            G.missionKills++;
+            recordMissionEvent('Building destroyed (splash)');
+        }
     }
 }
 
@@ -1448,15 +1610,16 @@ function updatePhysics(dt) {
     // Controls
     let pitchInput = (G.keys['w'] ? 1 : 0) - (G.keys['s'] ? 1 : 0);
     let rollInput = (G.keys['a'] ? 1 : 0) - (G.keys['d'] ? 1 : 0);
-    const yawInput = (G.keys['q'] ? 1 : 0) - (G.keys['e'] ? 1 : 0);
-    
-    // Mouse Override
-    if (G.keys['mouse_pitch']) pitchInput += G.keys['mouse_pitch'];
-    if (G.keys['mouse_roll']) rollInput += G.keys['mouse_roll'];
-    
-    // Clamp
+    let yawInput = (G.keys['q'] ? 1 : 0) - (G.keys['e'] ? 1 : 0);
+
+    // Clamp and deadzone to prevent micro-input drift.
     pitchInput = Math.max(-1, Math.min(1, pitchInput));
     rollInput = Math.max(-1, Math.min(1, rollInput));
+    yawInput = Math.max(-1, Math.min(1, yawInput));
+
+    if (Math.abs(pitchInput) < G.inputDeadzone) pitchInput = 0;
+    if (Math.abs(rollInput) < G.inputDeadzone) rollInput = 0;
+    if (Math.abs(yawInput) < G.inputDeadzone) yawInput = 0;
 
     // Throttle
     if (G.keys['shift']) G.throttle = Math.min(1, G.throttle + dt * 0.5);
@@ -1466,11 +1629,39 @@ function updatePhysics(dt) {
     if (G.keys['g']) fireCannon();
     if (G.cannonCooldown > 0) G.cannonCooldown -= dt;
     
-    // Smooth rotation rates
-    const sensitivity = 2.5;
-    G.pitchRate += (pitchInput * sensitivity - G.pitchRate) * dt * 3;
-    G.rollRate += (rollInput * sensitivity * 1.5 - G.rollRate) * dt * 3;
-    G.yawRate += (yawInput * sensitivity * 0.8 - G.yawRate) * dt * 3;
+    // Smooth rotation rates with flight assist for better beginner handling.
+    const pitchTarget = pitchInput * 2.0;
+    let rollTarget = rollInput * 2.4;
+    let yawTarget = yawInput * 1.4;
+
+    if (G.beginnerFlightAssist) {
+        const euler = new THREE.Euler().setFromQuaternion(G.jetGroup.quaternion, 'YXZ');
+        const bankAngle = euler.z;
+
+        // Auto-level when not actively rolling.
+        if (Math.abs(rollInput) < 0.01) {
+            rollTarget += -bankAngle * G.autoLevelStrength;
+        }
+
+        // Mild coordinated turn assist to help nose follow bank direction.
+        if (Math.abs(yawInput) < 0.01) {
+            yawTarget += -bankAngle * 0.35;
+        }
+    }
+
+    const response = G.pitchResponse;
+    G.pitchRate += (pitchTarget - G.pitchRate) * dt * response;
+    G.rollRate += (rollTarget - G.rollRate) * dt * response;
+    G.yawRate += (yawTarget - G.yawRate) * dt * response;
+
+    // Stabilization damping keeps controls from running away after release.
+    if (pitchInput === 0) G.pitchRate *= Math.max(0, 1 - dt * G.stabilityDamping);
+    if (rollInput === 0) G.rollRate *= Math.max(0, 1 - dt * G.stabilityDamping);
+    if (yawInput === 0) G.yawRate *= Math.max(0, 1 - dt * (G.stabilityDamping - 1.2));
+
+    G.pitchRate = Math.max(-2.6, Math.min(2.6, G.pitchRate));
+    G.rollRate = Math.max(-3.2, Math.min(3.2, G.rollRate));
+    G.yawRate = Math.max(-1.8, Math.min(1.8, G.yawRate));
     
     // Apply rotations
     const pitchQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), G.pitchRate * dt);
@@ -1551,23 +1742,85 @@ function updateEnemies(dt) {
         
         const pos = enemy.group.position;
         const playerDist = pos.distanceTo(G.jetGroup.position);
-        
-        // Waypoint navigation
-        enemy.waypointTimer -= dt;
-        if (enemy.waypointTimer <= 0 || pos.distanceTo(enemy.targetPos) < 50) {
-            enemy.waypointTimer = 5 + Math.random() * 10;
-            if (playerDist < enemy.aggroRange) {
-                // Engage player
-                const offset = new THREE.Vector3(
-                    (Math.random()-0.5) * 200,
-                    (Math.random()-0.5) * 100,
-                    (Math.random()-0.5) * 200
-                );
-                enemy.targetPos.copy(G.jetGroup.position).add(offset);
+
+        enemy.aiStateTimer -= dt;
+        const lowHealth = enemy.health < (enemy.type === 'jet' ? 20 : 10);
+
+        if (enemy.type === 'jet') {
+            if (playerDist < enemy.aggroRange * 0.9 && enemy.aiState === 'patrol') {
+                enemy.aiState = 'merge';
+                enemy.aiStateTimer = 2 + Math.random() * 2;
+            }
+
+            if (enemy.aiStateTimer <= 0) {
+                if (enemy.aiState === 'merge') {
+                    enemy.aiState = lowHealth ? 'extend' : 'turnFight';
+                    enemy.aiStateTimer = 2.5 + Math.random() * 2.5;
+                    enemy.breakDir = Math.random() > 0.5 ? 1 : -1;
+                } else if (enemy.aiState === 'turnFight') {
+                    enemy.aiState = Math.random() > 0.4 ? 'extend' : 'merge';
+                    enemy.aiStateTimer = 2 + Math.random() * 3;
+                } else if (enemy.aiState === 'extend') {
+                    enemy.aiState = playerDist < enemy.aggroRange * 1.4 ? 'reengage' : 'patrol';
+                    enemy.aiStateTimer = 2 + Math.random() * 2;
+                } else if (enemy.aiState === 'reengage') {
+                    enemy.aiState = 'merge';
+                    enemy.aiStateTimer = 2 + Math.random() * 2;
+                } else {
+                    enemy.aiState = playerDist < enemy.aggroRange ? 'merge' : 'patrol';
+                    enemy.aiStateTimer = 3 + Math.random() * 3;
+                }
+            }
+        } else {
+            if (enemy.aiStateTimer <= 0) {
+                enemy.aiState = playerDist < enemy.aggroRange ? 'harass' : 'patrol';
+                enemy.aiStateTimer = 2 + Math.random() * 4;
+            }
+        }
+
+        // Select tactical target position from state machine.
+        if (enemy.type === 'jet') {
+            const playerForward = new THREE.Vector3(0, 0, -1).applyQuaternion(G.jetGroup.quaternion);
+            const playerRight = new THREE.Vector3(1, 0, 0).applyQuaternion(G.jetGroup.quaternion);
+
+            if (enemy.aiState === 'merge') {
+                enemy.targetPos.copy(G.jetGroup.position)
+                    .add(playerForward.clone().multiplyScalar(-220))
+                    .add(playerRight.clone().multiplyScalar(enemy.breakDir * 120))
+                    .add(new THREE.Vector3(0, -40, 0));
+            } else if (enemy.aiState === 'turnFight') {
+                enemy.targetPos.copy(G.jetGroup.position)
+                    .add(enemy.preferredOffset)
+                    .add(playerRight.clone().multiplyScalar(enemy.breakDir * 100));
+            } else if (enemy.aiState === 'extend') {
+                const away = pos.clone().sub(G.jetGroup.position).normalize();
+                enemy.targetPos.copy(pos).add(away.multiplyScalar(500 + enemy.skill * 220)).setY(Math.max(120, pos.y + 40));
+            } else if (enemy.aiState === 'reengage') {
+                enemy.targetPos.copy(G.jetGroup.position).add(playerForward.clone().multiplyScalar(-420));
             } else {
+                enemy.waypointTimer -= dt;
+                if (enemy.waypointTimer <= 0 || pos.distanceTo(enemy.targetPos) < 50) {
+                    enemy.waypointTimer = 5 + Math.random() * 10;
+                    enemy.targetPos.set(
+                        (Math.random()-0.5) * 1500,
+                        200 + Math.random() * 500,
+                        (Math.random()-0.5) * 1500
+                    );
+                }
+            }
+        } else {
+            enemy.waypointTimer -= dt;
+            if (enemy.aiState === 'harass') {
+                enemy.targetPos.copy(G.jetGroup.position).add(new THREE.Vector3(
+                    (Math.random()-0.5) * 120,
+                    30 + Math.random() * 80,
+                    (Math.random()-0.5) * 120
+                ));
+            } else if (enemy.waypointTimer <= 0 || pos.distanceTo(enemy.targetPos) < 50) {
+                enemy.waypointTimer = 5 + Math.random() * 10;
                 enemy.targetPos.set(
                     (Math.random()-0.5) * 1500,
-                    enemy.type === 'drone' ? 100 + Math.random() * 200 : 200 + Math.random() * 500,
+                    100 + Math.random() * 200,
                     (Math.random()-0.5) * 1500
                 );
             }
@@ -1585,7 +1838,10 @@ function updateEnemies(dt) {
         
         // Move forward
         const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(enemy.group.quaternion);
-        pos.add(fwd.multiplyScalar(enemy.speed * dt));
+        const speedMul = enemy.type === 'jet'
+            ? (enemy.aiState === 'extend' ? 1.25 : (enemy.aiState === 'turnFight' ? 0.92 : 1.0))
+            : (enemy.aiState === 'harass' ? 1.1 : 0.9);
+        pos.add(fwd.multiplyScalar(enemy.speed * speedMul * dt));
         
         // Keep above ground
         if (pos.y < 30) pos.y = 30;
@@ -1593,7 +1849,8 @@ function updateEnemies(dt) {
         // Shoot at player (jets only)
         if (enemy.type === 'jet' && playerDist < enemy.aggroRange) {
             enemy.shootTimer -= dt;
-            if (enemy.shootTimer <= 0) {
+            const facing = fwd.dot(new THREE.Vector3().subVectors(G.jetGroup.position, pos).normalize());
+            if (enemy.shootTimer <= 0 && enemy.aiState !== 'extend' && facing > 0.65) {
                 enemy.shootTimer = 4 + Math.random() * 6;
                 fireEnemyMissile(enemy);
             }
@@ -1618,6 +1875,7 @@ function updateMissiles(dt) {
         m.life -= dt;
         
         if (m.life <= 0) {
+            if (G.missileCamMissile === m) stopMissileCameraFollow();
             G.scene.remove(m.group);
             G.activeMissiles.splice(i, 1);
             continue;
@@ -1663,6 +1921,7 @@ function updateMissiles(dt) {
                 const dist = m.group.position.distanceTo(e.group.position);
                 if (dist < 15) {
                     e.health -= 40;
+                    G.hitsMissile++;
                     e.hitFlash = 0.2;
                     if (e.health <= 0) {
                         e.alive = false;
@@ -1670,10 +1929,12 @@ function updateMissiles(dt) {
                         G.scene.remove(e.group);
                         addKillFeedEntry(`${e.type.toUpperCase()} DESTROYED`);
                         G.missionKills++;
+                        recordMissionEvent(`${e.type.toUpperCase()} kill (missile)`);
                         if (G.lockedTarget === e) G.lockedTarget = null;
                     } else {
                         createExplosion(e.group.position.clone(), 0.5, 0xff8800);
                     }
+                    if (G.missileCamMissile === m) stopMissileCameraFollow();
                     G.scene.remove(m.group);
                     G.activeMissiles.splice(i, 1);
                     break;
@@ -1688,6 +1949,7 @@ function updateMissiles(dt) {
                 const dy = m.group.position.y - b.group.position.y;
                 if (dx < b.w/2 + 5 && dz < b.d/2 + 5 && Math.abs(dy) < b.height/2 + 5) {
                     b.health -= 35;
+                    G.hitsMissile++;
                     createExplosion(m.group.position.clone(), 2, 0xff4400);
                     if (b.health <= 0) {
                         b.destroyed = true;
@@ -1695,6 +1957,7 @@ function updateMissiles(dt) {
                         createExplosion(new THREE.Vector3(b.x, b.height/2, b.z), 4, 0xff6600);
                         addKillFeedEntry('BUILDING DESTROYED');
                         G.missionKills++;
+                        recordMissionEvent('Building destroyed');
                         if (G.lockedTarget === b) G.lockedTarget = null;
                         
                         // Add rubble
@@ -1712,6 +1975,7 @@ function updateMissiles(dt) {
                             G.scene.add(rubble);
                         }
                     }
+                    if (G.missileCamMissile === m) stopMissileCameraFollow();
                     G.scene.remove(m.group);
                     const idx = G.activeMissiles.indexOf(m);
                     if (idx > -1) G.activeMissiles.splice(idx, 1);
@@ -1741,6 +2005,7 @@ function updateMissiles(dt) {
         // Ground collision
         if (m.group.position.y < 2) {
             createExplosion(m.group.position.clone(), 1.5);
+            if (G.missileCamMissile === m) stopMissileCameraFollow();
             G.scene.remove(m.group);
             G.activeMissiles.splice(i, 1);
         }
@@ -1764,6 +2029,7 @@ function updateBullets(dt) {
             if (!e.alive) continue;
             if (b.mesh.position.distanceTo(e.group.position) < 8) {
                 e.health -= 8;
+                G.hitsCannon++;
                 e.hitFlash = 0.1;
                 createExplosion(b.mesh.position.clone(), 0.3, 0xffaa00);
                 if (e.health <= 0) {
@@ -1772,6 +2038,7 @@ function updateBullets(dt) {
                     G.scene.remove(e.group);
                     addKillFeedEntry(`${e.type.toUpperCase()} DESTROYED [CANNON]`);
                     G.missionKills++;
+                    recordMissionEvent(`${e.type.toUpperCase()} kill (cannon)`);
                     if (G.lockedTarget === e) G.lockedTarget = null;
                 }
                 G.scene.remove(b.mesh);
@@ -1861,15 +2128,47 @@ function updateParticles(dt) {
 }
 
 function updateCamera() {
+    if (G.postDetonationCamActive && G.postDetonationCamPos) {
+        const anchor = G.postDetonationCamPos;
+        const desiredPos = anchor.clone().add(new THREE.Vector3(0, 18, 28));
+        G.camera.position.lerp(desiredPos, 0.18);
+        G.camera.lookAt(anchor);
+        return;
+    }
+
+    if (G.missileCamActive && G.missileCamMissile && G.missileCamMissile.group) {
+        const missile = G.missileCamMissile;
+        const missilePos = missile.group.position.clone();
+        const missileForward = new THREE.Vector3(0, 0, -1).applyQuaternion(missile.group.quaternion);
+        const missileUp = new THREE.Vector3(0, 1, 0).applyQuaternion(missile.group.quaternion);
+
+        const camPos = missilePos
+            .clone()
+            .add(missileUp.multiplyScalar(2.7))
+            .add(missileForward.clone().multiplyScalar(-13));
+        G.camera.position.lerp(camPos, 0.35);
+
+        const lookAt = missilePos.clone().add(missileForward.clone().multiplyScalar(80));
+        G.camera.lookAt(lookAt);
+        return;
+    }
+
+    if (G.missileCamActive && (!G.missileCamMissile || !G.missileCamMissile.group)) {
+        stopMissileCameraFollow();
+    }
+
     const offset = new THREE.Vector3();
     const lookAt = G.jetGroup.position.clone();
+    const speedNorm = Math.min(1, G.speed / Math.max(1, G.maxSpeed));
+    const gLoad = Math.min(6, Math.max(1, G.gForce));
     
     if (G.cameraMode === 0) {
         // Chase cam
         offset.set(0, 8, 35);
         offset.applyQuaternion(G.jetGroup.quaternion);
         const targetPos = G.jetGroup.position.clone().add(offset);
-        G.camera.position.lerp(targetPos, 0.08);
+        const chaseLerp = 0.06 + speedNorm * 0.05;
+        G.camera.position.lerp(targetPos, chaseLerp);
         const fwd = new THREE.Vector3(0, 0, -30).applyQuaternion(G.jetGroup.quaternion);
         lookAt.add(fwd);
     } else if (G.cameraMode === 1) {
@@ -1888,6 +2187,19 @@ function updateCamera() {
         const fwd = new THREE.Vector3(0, 0, -50).applyQuaternion(G.jetGroup.quaternion);
         lookAt.add(fwd);
     }
+
+    if (!G.missileAimMode) {
+        const targetFov = 68 + speedNorm * 8 + Math.max(0, gLoad - 1) * 1.2;
+        G.camera.fov += (targetFov - G.camera.fov) * 0.08;
+        G.camera.updateProjectionMatrix();
+    }
+
+    // Subtle shake under heavy G-load for motion feel.
+    if (gLoad > 2.1 && G.cameraMode !== 1) {
+        const shakeAmp = Math.min(0.5, (gLoad - 2.1) * 0.11);
+        G.camera.position.x += (Math.random() - 0.5) * shakeAmp;
+        G.camera.position.y += (Math.random() - 0.5) * shakeAmp;
+    }
     
     G.camera.lookAt(lookAt);
     
@@ -1899,6 +2211,43 @@ function updateCamera() {
 function updateHUD() {
     const speedKts = Math.round(G.speed * 1.944);
     const altFt = Math.round(G.altitude * 3.281);
+    const detHint = document.getElementById('detonateHint');
+    if (G.missileCamActive) detHint.classList.add('active');
+    else detHint.classList.remove('active');
+
+    const sensor = document.getElementById('sensorReadout');
+    const lead = document.getElementById('leadIndicator');
+    if (G.lockedTarget && G.lockedTarget.group) {
+        const targetPos = G.lockedTarget.group.position.clone();
+        const targetVel = G.lockedTarget.velocity
+            ? G.lockedTarget.velocity.clone()
+            : (G.lockedTarget.type
+                ? new THREE.Vector3(0, 0, -1).applyQuaternion(G.lockedTarget.group.quaternion).multiplyScalar(G.lockedTarget.speed || 0)
+                : new THREE.Vector3());
+        const toTarget = targetPos.clone().sub(G.jetGroup.position);
+        const dist = toTarget.length();
+        const playerVel = new THREE.Vector3(0, 0, -1).applyQuaternion(G.jetGroup.quaternion).multiplyScalar(G.speed);
+        const relVel = targetVel.sub(playerVel);
+        const closure = -toTarget.normalize().dot(relVel);
+
+        G.sensorClosure = closure;
+        G.sensorDistance = dist;
+        sensor.textContent = `CLOSURE ${closure >= 0 ? '+' : ''}${Math.round(closure)} m/s | RNG ${Math.round(dist)}m`;
+
+        const leadTime = Math.min(1.2, dist / (G.maxSpeed * 5));
+        const leadPoint = targetPos.add(relVel.multiplyScalar(leadTime));
+        const projected = leadPoint.project(G.camera);
+        if (projected.z < 1 && Math.abs(projected.x) <= 1.1 && Math.abs(projected.y) <= 1.1) {
+            lead.style.display = 'block';
+            lead.style.left = ((projected.x * 0.5 + 0.5) * window.innerWidth) + 'px';
+            lead.style.top = ((-projected.y * 0.5 + 0.5) * window.innerHeight) + 'px';
+        } else {
+            lead.style.display = 'none';
+        }
+    } else {
+        sensor.textContent = 'CLOSURE +000 m/s';
+        lead.style.display = 'none';
+    }
     
     document.getElementById('speedVal').textContent = speedKts;
     document.getElementById('speedBar').style.width = (G.speed / G.maxSpeed * 100) + '%';
@@ -1985,7 +2334,15 @@ function updateHUD() {
     // Mission complete check
     if (G.missionActive && G.missionKills >= G.missionTargets && !G.missionComplete) {
         G.missionComplete = true;
-        showNotification('MISSION COMPLETE!', 5000);
+        const debrief = calculateMissionDebrief();
+        const recentEvents = G.missionEvents.slice(-3).join('\n');
+        showNotification(
+            `MISSION COMPLETE!\nGRADE ${debrief.grade} | SCORE ${debrief.total}` +
+            `\nACC ${debrief.accuracyScore}% | SURV ${debrief.survivalScore}% | TIME ${debrief.elapsed.toFixed(1)}s` +
+            `${recentEvents ? `\n${recentEvents}` : ''}`,
+            6000
+        );
+        recordMissionEvent(`Mission complete grade ${debrief.grade}`);
         setTimeout(() => {
             document.getElementById('menuScreen').style.display = 'flex';
             G.missionActive = false;
@@ -2105,6 +2462,13 @@ function animate() {
             }
         }
 
+        if (G.postDetonationCamActive) {
+            G.postDetonationCamTimer -= rawDt;
+            if (G.postDetonationCamTimer <= 0) {
+                stopPostDetonationCamera();
+            }
+        }
+
         updateDayNightCycle(dt);
         updatePhysics(dt);
         updateAutoTarget();
@@ -2134,6 +2498,8 @@ function showMissions() {
 
 function startMission(num) {
     endMissileAimMode();
+    stopMissileCameraFollow();
+    stopPostDetonationCamera();
     G.currentMission = num;
     G.missionActive = true;
     G.missionComplete = false;
@@ -2147,6 +2513,13 @@ function startMission(num) {
     G.throttle = 0.5;
     G.started = true;
     G.lockedTarget = null;
+    G.missionStartTime = performance.now();
+    G.missionEvents = [];
+    G.shotsMissile = 0;
+    G.hitsMissile = 0;
+    G.shotsCannon = 0;
+    G.hitsCannon = 0;
+    G.scoreDebriefShown = false;
     
     // Clear old stuff
     G.activeMissiles.forEach(m => G.scene.remove(m.group));
@@ -2159,11 +2532,14 @@ function startMission(num) {
     document.getElementById('menuScreen').style.display = 'none';
     
     const missionNames = ['', 'AIR SUPERIORITY', 'DRONE HUNT', 'GROUND STRIKE', 'TOTAL WAR'];
+    recordMissionEvent(`Mission start: ${missionNames[num]}`);
     showNotification(`MISSION: ${missionNames[num]}\nENGAGE ALL TARGETS`, 4000);
 }
 
 function startFreeFlight() {
     endMissileAimMode();
+    stopMissileCameraFollow();
+    stopPostDetonationCamera();
     G.currentMission = 0;
     G.missionActive = false;
     G.hull = 100;
