@@ -43,6 +43,247 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16p
 .floating-healthbar { position: absolute; pointer-events: none; transform: translate(-50%, -50%); }
 .floating-healthbar-bg { width: 60px; height: 6px; background: rgba(0,0,0,0.7); border: 1px solid #555; border-radius: 3px; overflow: hidden; }
 .floating-healthbar-fill { height: 100%; background: linear-gradient(90deg, #dc2626, #f87171); transition: width 0.2s; border-radius: 2px; }
+
+/* Customizer responsive + resizable layout */
+#customizer { padding: clamp(8px, 1.2vw, 16px); }
+
+.customizer-shell {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(240px, var(--left-panel-width, 320px)) 8px minmax(420px, 1fr) 8px minmax(240px, var(--right-panel-width, 300px));
+  gap: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.customizer-panel,
+.customizer-center {
+  min-width: 0;
+  min-height: 0;
+}
+
+.customizer-panel-right { padding-right: max(12px, env(safe-area-inset-right)); }
+
+.panel-resizer {
+  background: linear-gradient(180deg, rgba(59,130,246,0.05), rgba(59,130,246,0.25), rgba(59,130,246,0.05));
+  cursor: col-resize;
+  border-left: 1px solid rgba(59,130,246,0.2);
+  border-right: 1px solid rgba(59,130,246,0.2);
+  transition: background 0.2s ease;
+}
+
+.panel-resizer:hover,
+.panel-resizer.active {
+  background: linear-gradient(180deg, rgba(59,130,246,0.15), rgba(59,130,246,0.45), rgba(59,130,246,0.15));
+}
+
+.furniture-add-btn {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.cad-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12, 20, 36, 0.9);
+  border: 1px solid rgba(71, 85, 105, 0.9);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: min(90%, 860px);
+  z-index: 12;
+}
+
+.cad-tool-btn {
+  background: #1f2937;
+  color: #d1d5db;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.cad-tool-btn:hover { background: #334155; color: #fff; }
+.cad-tool-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px rgba(96,165,250,0.35) inset;
+}
+
+.cad-panel {
+  position: absolute;
+  top: 68px;
+  right: 12px;
+  width: min(340px, 44vw);
+  max-height: calc(100% - 185px);
+  overflow-y: auto;
+  background: rgba(12, 20, 36, 0.88);
+  border: 1px solid rgba(71, 85, 105, 0.9);
+  border-radius: 10px;
+  padding: 10px;
+  z-index: 11;
+}
+
+.cad-section-label {
+  color: #93c5fd;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.cad-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.cad-field label {
+  width: 62px;
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+.cad-input,
+.cad-select {
+  background: #111827;
+  border: 1px solid #374151;
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+  width: 100%;
+}
+
+.cad-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.cad-btn {
+  background: #2563eb;
+  border: 1px solid #3b82f6;
+  color: white;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background 0.15s ease;
+}
+
+.cad-btn:hover { background: #1d4ed8; }
+
+.cad-command-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  width: min(700px, calc(100% - 24px));
+  background: rgba(10, 18, 32, 0.92);
+  border: 1px solid rgba(71, 85, 105, 0.9);
+  border-radius: 10px;
+  padding: 8px;
+  z-index: 12;
+}
+
+.cad-command-input {
+  width: 100%;
+  background: #0b1220;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 10px;
+  font-family: 'Orbitron', monospace;
+}
+
+.cad-command-hint {
+  color: #93c5fd;
+  font-size: 10px;
+  margin-top: 6px;
+}
+
+.cad-status {
+  position: absolute;
+  left: 12px;
+  bottom: 120px;
+  background: rgba(12, 20, 36, 0.88);
+  border: 1px solid rgba(71, 85, 105, 0.9);
+  border-radius: 8px;
+  color: #d1d5db;
+  font-size: 11px;
+  padding: 8px;
+  max-width: 310px;
+  z-index: 11;
+}
+
+@media (max-width: 1100px) {
+  .customizer-shell {
+    grid-template-columns: minmax(220px, 34vw) 1fr;
+    grid-template-rows: minmax(300px, 1fr) minmax(220px, 38vh);
+  }
+
+  .panel-resizer,
+  .panel-resizer-right { display: none; }
+
+  .customizer-center { grid-column: 2; grid-row: 1 / span 2; }
+  .customizer-panel-left { grid-column: 1; grid-row: 1; }
+  .customizer-panel-right {
+    grid-column: 1;
+    grid-row: 2;
+    border-top: 1px solid rgba(55, 65, 81, 1);
+  }
+}
+
+@media (max-width: 760px) {
+  .customizer-shell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .customizer-panel-left,
+  .customizer-panel-right { max-height: 32vh; }
+  .customizer-center { flex: 1; min-height: 44vh; }
+
+  .cad-panel {
+    position: absolute;
+    right: 8px;
+    top: 62px;
+    width: min(320px, calc(100% - 16px));
+    max-height: 42%;
+  }
+
+  .cad-toolbar {
+    top: 8px;
+    max-width: calc(100% - 16px);
+  }
+
+  .cad-command-bar {
+    bottom: 46px;
+    width: calc(100% - 16px);
+  }
+}
 </style>
 </head>
 <body>
@@ -85,17 +326,93 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16p
 
 <!-- House Customizer -->
 <div id="customizer" class="fixed inset-0 z-40 hidden" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
-  <div class="flex h-full">
+  <div id="customizerShell" class="customizer-shell" style="--left-panel-width:320px; --right-panel-width:300px;">
     <!-- Left Panel - Rooms -->
-    <div class="w-80 bg-gray-900/95 border-r border-gray-700 overflow-y-auto p-4 flex flex-col">
+    <div class="customizer-panel customizer-panel-left bg-gray-900/95 border-r border-gray-700 overflow-y-auto p-4 flex flex-col">
       <h2 class="text-xl font-bold text-white mb-3" style="font-family:'Orbitron',monospace;">ROOMS</h2>
       <button onclick="addRoom()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg mb-3 font-bold transition text-sm">+ Add Room</button>
       <div id="roomList" class="space-y-2 flex-1 overflow-y-auto"></div>
     </div>
 
+    <div id="leftPanelResizer" class="panel-resizer" title="Drag to resize panels"></div>
+
     <!-- Center - 3D Preview -->
-    <div class="flex-1 relative">
+    <div class="customizer-center relative">
       <canvas id="previewCanvas" class="w-full h-full"></canvas>
+
+      <div class="cad-toolbar">
+        <button id="cadToolSelect" class="cad-tool-btn active" onclick="setCadTool('select')">Select</button>
+        <button id="cadToolMove" class="cad-tool-btn" onclick="setCadTool('move')">Move XYZ</button>
+        <button id="cadToolSketch" class="cad-tool-btn" onclick="setCadTool('sketch')">Sketch</button>
+        <button id="cadToolExtrude" class="cad-tool-btn" onclick="setCadTool('extrude')">Extrude</button>
+        <button id="cadToolWall" class="cad-tool-btn" onclick="setCadTool('wall')">Wall</button>
+        <button id="cadToolScale" class="cad-tool-btn" onclick="setCadTool('scale')">Scale</button>
+      </div>
+
+      <div class="cad-panel">
+        <div class="cad-section-label">Plane / Sketch</div>
+        <div class="cad-field">
+          <label>Plane</label>
+          <select id="cadPlaneSelect" class="cad-select" onchange="setCadPlane(this.value)">
+            <option value="floor">Floor</option>
+            <option value="wall-north">Wall North</option>
+            <option value="wall-south">Wall South</option>
+            <option value="wall-west">Wall West</option>
+            <option value="wall-east">Wall East</option>
+          </select>
+        </div>
+        <div class="cad-field">
+          <label>Primitive</label>
+          <select id="cadPrimitiveSelect" class="cad-select" onchange="setCadPrimitive(this.value)">
+            <option value="line">Line</option>
+            <option value="arc">Arc</option>
+            <option value="circle">Circle</option>
+            <option value="rectangle">Rectangle</option>
+            <option value="polygon">Polygon</option>
+          </select>
+        </div>
+        <div class="cad-row">
+          <input id="cadParamW" class="cad-input" type="number" step="0.1" value="2" placeholder="W/L">
+          <input id="cadParamH" class="cad-input" type="number" step="0.1" value="1.5" placeholder="H">
+          <input id="cadParamR" class="cad-input" type="number" step="0.1" value="1" placeholder="R">
+        </div>
+        <div class="cad-row">
+          <input id="cadParamSides" class="cad-input" type="number" min="3" max="12" step="1" value="6" placeholder="Sides">
+          <input id="cadParamA0" class="cad-input" type="number" step="5" value="0" placeholder="A0">
+          <input id="cadParamA1" class="cad-input" type="number" step="5" value="120" placeholder="A1">
+        </div>
+        <button class="cad-btn w-full mb-2" onclick="createSketchAtCursor()">Create Sketch At Cursor</button>
+
+        <div class="cad-section-label">Move / Scale / Extrude</div>
+        <div class="cad-row">
+          <input id="cadMoveX" class="cad-input" type="number" step="0.1" value="0" placeholder="dX">
+          <input id="cadMoveY" class="cad-input" type="number" step="0.1" value="0" placeholder="dY">
+          <input id="cadMoveZ" class="cad-input" type="number" step="0.1" value="0" placeholder="dZ">
+        </div>
+        <button class="cad-btn w-full mb-2" onclick="applyCadMove()">Apply Move XYZ</button>
+
+        <div class="cad-row">
+          <input id="cadScaleX" class="cad-input" type="number" step="0.1" value="1" placeholder="SX">
+          <input id="cadScaleY" class="cad-input" type="number" step="0.1" value="1" placeholder="SY">
+          <input id="cadScaleZ" class="cad-input" type="number" step="0.1" value="1" placeholder="SZ">
+        </div>
+        <button class="cad-btn w-full mb-2" onclick="applyCadScale()">Apply Scale</button>
+
+        <div class="cad-row">
+          <input id="cadExtrudeDepth" class="cad-input" type="number" step="0.1" value="0.3" placeholder="Depth">
+          <input id="cadWallH" class="cad-input" type="number" step="0.1" value="2.8" placeholder="Wall H">
+          <input id="cadWallT" class="cad-input" type="number" step="0.05" value="0.15" placeholder="Wall T">
+        </div>
+        <button class="cad-btn w-full mb-1" onclick="extrudeSelectedSketch()">Extrude Selected Sketch</button>
+      </div>
+
+      <div id="cadStatus" class="cad-status">CAD ready. Select tool and click in preview.</div>
+
+      <div class="cad-command-bar">
+        <input id="cadCommandInput" class="cad-command-input" type="text" placeholder="CAD command: move 1 0 0 | scale 1.2 1 1.2 | tool sketch | plane floor | primitive rectangle | extrude 0.3" onkeydown="if(event.key==='Enter'){runCadCommand(this.value);this.value='';}">
+        <div class="cad-command-hint">Mouse + keyboard workflow: click to place geometry, then fine-tune with command line and numeric fields.</div>
+      </div>
+
       <!-- Bottom controls -->
       <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3">
         <button onclick="resetCamera()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition">Reset View</button>
@@ -103,12 +420,14 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16p
       </div>
       <!-- Connection hint -->
       <div class="absolute top-4 left-4 bg-gray-900/80 px-3 py-2 rounded-lg text-xs text-gray-400 border border-gray-700">
-        Drag to orbit &bull; Scroll to zoom &bull; Click to select furniture/doorways &bull; Drag arrows to move
+        Drag to orbit &bull; Scroll to zoom &bull; Q/G/K/X/L/R = Select/Move/Sketch/Extrude/Wall/Scale
       </div>
     </div>
 
+    <div id="rightPanelResizer" class="panel-resizer panel-resizer-right" title="Drag to resize panels"></div>
+
     <!-- Right Panel - Furniture -->
-    <div class="w-72 bg-gray-900/95 border-l border-gray-700 overflow-y-auto p-4 flex flex-col">
+    <div class="customizer-panel customizer-panel-right bg-gray-900/95 border-l border-gray-700 overflow-y-auto p-4 flex flex-col">
       <h2 class="text-xl font-bold text-white mb-2" style="font-family:'Orbitron',monospace;">ITEMS</h2>
       <div class="text-xs text-gray-400 mb-2">Add to: <span id="targetRoomName" class="text-blue-400 font-bold">Living Room</span></div>
       <div class="flex flex-wrap gap-1 mb-3">
@@ -282,6 +601,19 @@ let dragStartMouse = {x: 0, y: 0};
 let dragStartPos = {x: 0, z: 0};
 let dragAxis = null; // 'x' or 'z'
 let doorwayConnections = []; // Persistent doorway data with offsets
+let customizerLayoutReady = false;
+
+// Lightweight CAD editor state
+let cadTool = 'select';
+let cadPlane = 'floor';
+let cadPrimitive = 'line';
+let cadSketches = []; // {id, roomIdx, plane, type, points2D[], closed, color}
+let cadSolids = []; // {id, roomIdx, kind, ...}
+let cadIdCounter = 1;
+let cadPendingPoint = null;
+let cadCursorPoint = null;
+let selectedCadSketchId = null;
+let selectedCadSolidId = null;
 
 // 3rd person camera
 let thirdPersonView = false;
@@ -358,10 +690,838 @@ function showCustomizer() {
   currentState = GameState.CUSTOMIZING;
   document.getElementById('mainMenu').classList.add('hidden');
   document.getElementById('customizer').classList.remove('hidden');
+  ensureCustomizerLayout();
   updateDoorwayConnections(); // Initialize doorway data
   initPreview();
+  setCadTool(cadTool);
+  setCadPlane(cadPlane);
+  setCadPrimitive(cadPrimitive);
   updateRoomList();
   updateFurnitureList();
+}
+
+function syncPreviewViewport() {
+  if (!previewRenderer || !previewCamera) return;
+  const canvas = document.getElementById('previewCanvas');
+  const width = Math.max(1, canvas.clientWidth);
+  const height = Math.max(1, canvas.clientHeight);
+  previewCamera.aspect = width / height;
+  previewCamera.updateProjectionMatrix();
+  previewRenderer.setSize(width, height, false);
+}
+
+function ensureCustomizerLayout() {
+  if (customizerLayoutReady) {
+    syncPreviewViewport();
+    return;
+  }
+
+  const shell = document.getElementById('customizerShell');
+  const leftResizer = document.getElementById('leftPanelResizer');
+  const rightResizer = document.getElementById('rightPanelResizer');
+  if (!shell || !leftResizer || !rightResizer) return;
+
+  const minPanel = 220;
+
+  function startDrag(which, event) {
+    event.preventDefault();
+    const resizer = which === 'left' ? leftResizer : rightResizer;
+    resizer.classList.add('active');
+
+    const onMove = (e) => {
+      const rect = shell.getBoundingClientRect();
+      if (window.innerWidth <= 1100) return;
+
+      if (which === 'left') {
+        const nextLeft = Math.max(minPanel, Math.min(rect.width - minPanel - 420, e.clientX - rect.left));
+        shell.style.setProperty('--left-panel-width', `${nextLeft}px`);
+      } else {
+        const fromRight = rect.right - e.clientX;
+        const nextRight = Math.max(minPanel, Math.min(rect.width - minPanel - 420, fromRight));
+        shell.style.setProperty('--right-panel-width', `${nextRight}px`);
+      }
+
+      syncPreviewViewport();
+    };
+
+    const onUp = () => {
+      resizer.classList.remove('active');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  leftResizer.addEventListener('mousedown', (e) => startDrag('left', e));
+  rightResizer.addEventListener('mousedown', (e) => startDrag('right', e));
+  customizerLayoutReady = true;
+}
+
+function setCadStatus(text, color = '#d1d5db') {
+  const el = document.getElementById('cadStatus');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = color;
+}
+
+function cadNum(id, fallback) {
+  const el = document.getElementById(id);
+  if (!el) return fallback;
+  const v = parseFloat(el.value);
+  return Number.isFinite(v) ? v : fallback;
+}
+
+function setCadTool(tool) {
+  cadTool = tool;
+  cadPendingPoint = null;
+
+  const ids = {
+    select: 'cadToolSelect',
+    move: 'cadToolMove',
+    sketch: 'cadToolSketch',
+    extrude: 'cadToolExtrude',
+    wall: 'cadToolWall',
+    scale: 'cadToolScale'
+  };
+
+  Object.entries(ids).forEach(([key, id]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('active', key === tool);
+  });
+
+  if (tool === 'sketch') setCadStatus('Sketch mode: click on selected plane to place primitives.', '#93c5fd');
+  else if (tool === 'wall') setCadStatus('Wall tool: click floor start point, then end point.', '#93c5fd');
+  else if (tool === 'extrude') setCadStatus('Extrude mode: select a closed sketch, then extrude.', '#93c5fd');
+  else setCadStatus(`Tool: ${tool.toUpperCase()}`, '#d1d5db');
+
+  rebuildPreview();
+}
+
+function setCadPlane(plane) {
+  cadPlane = plane;
+  cadPendingPoint = null;
+  setCadStatus(`Active plane: ${plane}`, '#a5b4fc');
+}
+
+function setCadPrimitive(primitive) {
+  cadPrimitive = primitive;
+  cadPendingPoint = null;
+  setCadStatus(`Sketch primitive: ${primitive}`, '#a5b4fc');
+}
+
+function clearCadSelection() {
+  selectedCadSketchId = null;
+  selectedCadSolidId = null;
+}
+
+function getCadPlaneFrame(roomIdx, planeName = cadPlane) {
+  const room = rooms[roomIdx];
+  if (!room) return null;
+
+  const b = getRoomBounds(room);
+  const wallInset = 0.04;
+  const floorY = 0.08;
+
+  if (planeName === 'floor') {
+    return {
+      roomIdx,
+      plane: planeName,
+      origin: new THREE.Vector3(b.minX, floorY, b.minZ),
+      u: new THREE.Vector3(1, 0, 0),
+      v: new THREE.Vector3(0, 0, 1),
+      n: new THREE.Vector3(0, 1, 0),
+      uMin: 0,
+      uMax: b.maxX - b.minX,
+      vMin: 0,
+      vMax: b.maxZ - b.minZ
+    };
+  }
+
+  if (planeName === 'wall-north') {
+    return {
+      roomIdx,
+      plane: planeName,
+      origin: new THREE.Vector3(b.minX, 0, b.minZ + wallInset),
+      u: new THREE.Vector3(1, 0, 0),
+      v: new THREE.Vector3(0, 1, 0),
+      n: new THREE.Vector3(0, 0, 1),
+      uMin: 0,
+      uMax: b.maxX - b.minX,
+      vMin: 0,
+      vMax: room.height
+    };
+  }
+
+  if (planeName === 'wall-south') {
+    return {
+      roomIdx,
+      plane: planeName,
+      origin: new THREE.Vector3(b.minX, 0, b.maxZ - wallInset),
+      u: new THREE.Vector3(1, 0, 0),
+      v: new THREE.Vector3(0, 1, 0),
+      n: new THREE.Vector3(0, 0, -1),
+      uMin: 0,
+      uMax: b.maxX - b.minX,
+      vMin: 0,
+      vMax: room.height
+    };
+  }
+
+  if (planeName === 'wall-west') {
+    return {
+      roomIdx,
+      plane: planeName,
+      origin: new THREE.Vector3(b.minX + wallInset, 0, b.minZ),
+      u: new THREE.Vector3(0, 0, 1),
+      v: new THREE.Vector3(0, 1, 0),
+      n: new THREE.Vector3(1, 0, 0),
+      uMin: 0,
+      uMax: b.maxZ - b.minZ,
+      vMin: 0,
+      vMax: room.height
+    };
+  }
+
+  if (planeName === 'wall-east') {
+    return {
+      roomIdx,
+      plane: planeName,
+      origin: new THREE.Vector3(b.maxX - wallInset, 0, b.minZ),
+      u: new THREE.Vector3(0, 0, 1),
+      v: new THREE.Vector3(0, 1, 0),
+      n: new THREE.Vector3(-1, 0, 0),
+      uMin: 0,
+      uMax: b.maxZ - b.minZ,
+      vMin: 0,
+      vMax: room.height
+    };
+  }
+
+  return null;
+}
+
+function cadWorldToUV(frame, worldPoint) {
+  const d = worldPoint.clone().sub(frame.origin);
+  return { u: d.dot(frame.u), v: d.dot(frame.v) };
+}
+
+function cadUVToWorld(frame, u, v, normalOffset = 0) {
+  return frame.origin.clone()
+    .add(frame.u.clone().multiplyScalar(u))
+    .add(frame.v.clone().multiplyScalar(v))
+    .add(frame.n.clone().multiplyScalar(normalOffset));
+}
+
+function cadClampUV(frame, uv) {
+  return {
+    u: Math.max(frame.uMin, Math.min(frame.uMax, uv.u)),
+    v: Math.max(frame.vMin, Math.min(frame.vMax, uv.v))
+  };
+}
+
+function getCadIntersectionFromRay(raycaster, planeName = cadPlane, roomIdx = selectedRoom) {
+  const frame = getCadPlaneFrame(roomIdx, planeName);
+  if (!frame) return null;
+
+  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(frame.n.clone(), frame.origin.clone());
+  const hit = new THREE.Vector3();
+  if (!raycaster.ray.intersectPlane(plane, hit)) return null;
+
+  const uv = cadClampUV(frame, cadWorldToUV(frame, hit));
+  return {
+    roomIdx,
+    plane: planeName,
+    frame,
+    u: uv.u,
+    v: uv.v,
+    world: cadUVToWorld(frame, uv.u, uv.v, 0.03)
+  };
+}
+
+function createCadSketch(roomIdx, planeName, type, points2D, closed) {
+  const sketch = {
+    id: cadIdCounter++,
+    roomIdx,
+    plane: planeName,
+    type,
+    points2D,
+    closed,
+    color: closed ? 0x60a5fa : 0xf59e0b
+  };
+  cadSketches.push(sketch);
+  selectedCadSketchId = sketch.id;
+  selectedCadSolidId = null;
+  selectedFurniture = null;
+  selectedDoorway = null;
+  setCadStatus(`Sketch ${type} created.`, '#34d399');
+  rebuildPreview();
+}
+
+function buildCirclePoints(u, v, radius, segments = 24, a0 = 0, a1 = Math.PI * 2) {
+  const pts = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const a = a0 + (a1 - a0) * t;
+    pts.push({ u: u + Math.cos(a) * radius, v: v + Math.sin(a) * radius });
+  }
+  return pts;
+}
+
+function createSketchFromHit(hit) {
+  const roomIdx = hit.roomIdx;
+  const planeName = hit.plane;
+  const w = Math.max(0.05, Math.abs(cadNum('cadParamW', 2)));
+  const h = Math.max(0.05, Math.abs(cadNum('cadParamH', 1.5)));
+  const r = Math.max(0.05, Math.abs(cadNum('cadParamR', 1)));
+  const sides = Math.max(3, Math.min(12, Math.round(cadNum('cadParamSides', 6))));
+  const a0 = cadNum('cadParamA0', 0) * Math.PI / 180;
+  const a1 = cadNum('cadParamA1', 120) * Math.PI / 180;
+
+  if (cadPrimitive === 'line') {
+    if (!cadPendingPoint) {
+      cadPendingPoint = hit;
+      setCadStatus('Line start fixed. Click second point.', '#93c5fd');
+      return;
+    }
+    createCadSketch(roomIdx, planeName, 'line', [
+      { u: cadPendingPoint.u, v: cadPendingPoint.v },
+      { u: hit.u, v: hit.v }
+    ], false);
+    cadPendingPoint = null;
+    return;
+  }
+
+  if (cadPrimitive === 'rectangle') {
+    if (!cadPendingPoint) {
+      cadPendingPoint = hit;
+      setCadStatus('Rectangle corner fixed. Click opposite corner.', '#93c5fd');
+      return;
+    }
+    const u0 = cadPendingPoint.u;
+    const v0 = cadPendingPoint.v;
+    const u1 = hit.u;
+    const v1 = hit.v;
+    createCadSketch(roomIdx, planeName, 'rectangle', [
+      { u: u0, v: v0 },
+      { u: u1, v: v0 },
+      { u: u1, v: v1 },
+      { u: u0, v: v1 }
+    ], true);
+    cadPendingPoint = null;
+    return;
+  }
+
+  if (cadPrimitive === 'circle') {
+    const points = buildCirclePoints(hit.u, hit.v, r, 28, 0, Math.PI * 2);
+    createCadSketch(roomIdx, planeName, 'circle', points.slice(0, -1), true);
+    return;
+  }
+
+  if (cadPrimitive === 'polygon') {
+    const pts = [];
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      pts.push({ u: hit.u + Math.cos(a) * r, v: hit.v + Math.sin(a) * r });
+    }
+    createCadSketch(roomIdx, planeName, 'polygon', pts, true);
+    return;
+  }
+
+  if (cadPrimitive === 'arc') {
+    const points = buildCirclePoints(hit.u, hit.v, r, 20, a0, a1);
+    createCadSketch(roomIdx, planeName, 'arc', points, false);
+  }
+}
+
+function createSketchAtCursor() {
+  let hit = cadCursorPoint;
+  if (!hit || hit.roomIdx !== selectedRoom || hit.plane !== cadPlane) {
+    const frame = getCadPlaneFrame(selectedRoom, cadPlane);
+    if (!frame) {
+      setCadStatus('No valid CAD plane for selected room.', '#fca5a5');
+      return;
+    }
+    const centerU = (frame.uMin + frame.uMax) / 2;
+    const centerV = (frame.vMin + frame.vMax) / 2;
+    hit = {
+      roomIdx: selectedRoom,
+      plane: cadPlane,
+      frame,
+      u: centerU,
+      v: centerV,
+      world: cadUVToWorld(frame, centerU, centerV, 0.03)
+    };
+  }
+
+  const w = Math.max(0.05, Math.abs(cadNum('cadParamW', 2)));
+  const h = Math.max(0.05, Math.abs(cadNum('cadParamH', 1.5)));
+  const r = Math.max(0.05, Math.abs(cadNum('cadParamR', 1)));
+  const sides = Math.max(3, Math.min(12, Math.round(cadNum('cadParamSides', 6))));
+  const a0 = cadNum('cadParamA0', 0) * Math.PI / 180;
+  const a1 = cadNum('cadParamA1', 120) * Math.PI / 180;
+
+  if (cadPrimitive === 'line') {
+    createCadSketch(hit.roomIdx, hit.plane, 'line', [
+      { u: hit.u - w * 0.5, v: hit.v },
+      { u: hit.u + w * 0.5, v: hit.v }
+    ], false);
+    return;
+  }
+
+  if (cadPrimitive === 'rectangle') {
+    createCadSketch(hit.roomIdx, hit.plane, 'rectangle', [
+      { u: hit.u - w * 0.5, v: hit.v - h * 0.5 },
+      { u: hit.u + w * 0.5, v: hit.v - h * 0.5 },
+      { u: hit.u + w * 0.5, v: hit.v + h * 0.5 },
+      { u: hit.u - w * 0.5, v: hit.v + h * 0.5 }
+    ], true);
+    return;
+  }
+
+  if (cadPrimitive === 'circle') {
+    const points = buildCirclePoints(hit.u, hit.v, r, 28, 0, Math.PI * 2);
+    createCadSketch(hit.roomIdx, hit.plane, 'circle', points.slice(0, -1), true);
+    return;
+  }
+
+  if (cadPrimitive === 'polygon') {
+    const pts = [];
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      pts.push({ u: hit.u + Math.cos(a) * r, v: hit.v + Math.sin(a) * r });
+    }
+    createCadSketch(hit.roomIdx, hit.plane, 'polygon', pts, true);
+    return;
+  }
+
+  if (cadPrimitive === 'arc') {
+    const points = buildCirclePoints(hit.u, hit.v, r, 20, a0, a1);
+    createCadSketch(hit.roomIdx, hit.plane, 'arc', points, false);
+  }
+}
+
+function findCadSketchById(id) {
+  return cadSketches.find(s => s.id === id) || null;
+}
+
+function findCadSolidById(id) {
+  return cadSolids.find(s => s.id === id) || null;
+}
+
+function extrudeSelectedSketch(depthOverride) {
+  const sketch = findCadSketchById(selectedCadSketchId);
+  if (!sketch) {
+    setCadStatus('Select a sketch first to extrude.', '#fca5a5');
+    return;
+  }
+
+  if (!sketch.closed || sketch.points2D.length < 3) {
+    setCadStatus('Extrude requires a closed outline (circle/rectangle/polygon).', '#fca5a5');
+    return;
+  }
+
+  const depth = Math.max(0.05, depthOverride || cadNum('cadExtrudeDepth', 0.3));
+  const solid = {
+    id: cadIdCounter++,
+    roomIdx: sketch.roomIdx,
+    kind: 'extrude',
+    plane: sketch.plane,
+    points2D: sketch.points2D.map(p => ({ u: p.u, v: p.v })),
+    depth,
+    color: 0x9aa6b2,
+    offset: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 }
+  };
+  cadSolids.push(solid);
+  selectedCadSolidId = solid.id;
+  selectedCadSketchId = null;
+  setCadStatus('Sketch extruded into solid.', '#34d399');
+  rebuildPreview();
+}
+
+function createWallFromHit(hit) {
+  if (!cadPendingPoint) {
+    cadPendingPoint = hit;
+    setCadStatus('Wall start set. Click end point.', '#93c5fd');
+    return;
+  }
+
+  const frame = getCadPlaneFrame(selectedRoom, 'floor');
+  if (!frame) {
+    cadPendingPoint = null;
+    return;
+  }
+
+  const start = cadUVToWorld(frame, cadPendingPoint.u, cadPendingPoint.v, 0.01);
+  const end = cadUVToWorld(frame, hit.u, hit.v, 0.01);
+  if (start.distanceTo(end) < 0.2) {
+    setCadStatus('Wall too short. Pick points farther apart.', '#fca5a5');
+    cadPendingPoint = null;
+    return;
+  }
+
+  const solid = {
+    id: cadIdCounter++,
+    roomIdx: selectedRoom,
+    kind: 'wall',
+    start: { x: start.x, y: start.y, z: start.z },
+    end: { x: end.x, y: end.y, z: end.z },
+    height: Math.max(0.5, cadNum('cadWallH', 2.8)),
+    thickness: Math.max(0.05, cadNum('cadWallT', 0.15)),
+    color: 0xe2e8f0,
+    offset: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 }
+  };
+  cadSolids.push(solid);
+  selectedCadSolidId = solid.id;
+  selectedCadSketchId = null;
+  cadPendingPoint = null;
+  setCadStatus('Wall created.', '#34d399');
+  rebuildPreview();
+}
+
+function applyCadMove(dxOverride, dyOverride, dzOverride) {
+  const dx = Number.isFinite(dxOverride) ? dxOverride : cadNum('cadMoveX', 0);
+  const dy = Number.isFinite(dyOverride) ? dyOverride : cadNum('cadMoveY', 0);
+  const dz = Number.isFinite(dzOverride) ? dzOverride : cadNum('cadMoveZ', 0);
+
+  if (selectedFurniture) {
+    const room = rooms[selectedFurniture.roomIdx];
+    const item = room.items[selectedFurniture.itemIdx];
+    if (!item) return;
+    item.x += dx;
+    item.z += dz;
+    item.y = (item.y || 0) + dy;
+    updateRoomList();
+    rebuildPreview();
+    setCadStatus(`Moved furniture by (${dx}, ${dy}, ${dz}).`, '#34d399');
+    return;
+  }
+
+  const solid = findCadSolidById(selectedCadSolidId);
+  if (solid) {
+    solid.offset.x += dx;
+    solid.offset.y += dy;
+    solid.offset.z += dz;
+    rebuildPreview();
+    setCadStatus(`Moved CAD solid by (${dx}, ${dy}, ${dz}).`, '#34d399');
+    return;
+  }
+
+  setCadStatus('Select furniture or CAD solid for move.', '#fca5a5');
+}
+
+function applyCadScale(sxOverride, syOverride, szOverride) {
+  const sx = Math.max(0.05, Number.isFinite(sxOverride) ? sxOverride : cadNum('cadScaleX', 1));
+  const sy = Math.max(0.05, Number.isFinite(syOverride) ? syOverride : cadNum('cadScaleY', 1));
+  const sz = Math.max(0.05, Number.isFinite(szOverride) ? szOverride : cadNum('cadScaleZ', 1));
+
+  if (selectedFurniture) {
+    const room = rooms[selectedFurniture.roomIdx];
+    const item = room.items[selectedFurniture.itemIdx];
+    if (!item) return;
+    const fDef = FURNITURE_DB.find(f => f.id === item.id);
+    if (!fDef || fDef.throwable) {
+      setCadStatus('Scale is allowed only on non-throwable objects.', '#fca5a5');
+      return;
+    }
+    item.scaleX = (item.scaleX || 1) * sx;
+    item.scaleY = (item.scaleY || 1) * sy;
+    item.scaleZ = (item.scaleZ || 1) * sz;
+    updateRoomList();
+    rebuildPreview();
+    setCadStatus(`Scaled furniture by (${sx}, ${sy}, ${sz}).`, '#34d399');
+    return;
+  }
+
+  const solid = findCadSolidById(selectedCadSolidId);
+  if (solid) {
+    solid.scale.x *= sx;
+    solid.scale.y *= sy;
+    solid.scale.z *= sz;
+    rebuildPreview();
+    setCadStatus(`Scaled CAD solid by (${sx}, ${sy}, ${sz}).`, '#34d399');
+    return;
+  }
+
+  setCadStatus('Select non-throwable furniture or CAD solid for scale.', '#fca5a5');
+}
+
+function runCadCommand(raw) {
+  const parts = (raw || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return;
+  const cmd = parts[0].toLowerCase();
+
+  if (cmd === 'tool' && parts[1]) {
+    setCadTool(parts[1].toLowerCase());
+    return;
+  }
+
+  if (cmd === 'plane' && parts[1]) {
+    setCadPlane(parts[1].toLowerCase());
+    const sel = document.getElementById('cadPlaneSelect');
+    if (sel) sel.value = cadPlane;
+    return;
+  }
+
+  if (cmd === 'primitive' && parts[1]) {
+    setCadPrimitive(parts[1].toLowerCase());
+    const sel = document.getElementById('cadPrimitiveSelect');
+    if (sel) sel.value = cadPrimitive;
+    return;
+  }
+
+  if (cmd === 'move' && parts.length >= 4) {
+    const dx = parseFloat(parts[1]);
+    const dy = parseFloat(parts[2]);
+    const dz = parseFloat(parts[3]);
+    applyCadMove(dx, dy, dz);
+    return;
+  }
+
+  if (cmd === 'scale' && parts.length >= 4) {
+    const sx = parseFloat(parts[1]);
+    const sy = parseFloat(parts[2]);
+    const sz = parseFloat(parts[3]);
+    applyCadScale(sx, sy, sz);
+    return;
+  }
+
+  if (cmd === 'extrude') {
+    const depth = parts[1] ? parseFloat(parts[1]) : cadNum('cadExtrudeDepth', 0.3);
+    extrudeSelectedSketch(depth);
+    return;
+  }
+
+  if (cmd === 'sketch' && parts[1]) {
+    setCadTool('sketch');
+    setCadPrimitive(parts[1].toLowerCase());
+    const sel = document.getElementById('cadPrimitiveSelect');
+    if (sel) sel.value = cadPrimitive;
+    return;
+  }
+
+  if (cmd === 'wall') {
+    setCadTool('wall');
+    if (parts[1]) {
+      const h = parseFloat(parts[1]);
+      if (Number.isFinite(h)) document.getElementById('cadWallH').value = String(h);
+    }
+    if (parts[2]) {
+      const t = parseFloat(parts[2]);
+      if (Number.isFinite(t)) document.getElementById('cadWallT').value = String(t);
+    }
+    return;
+  }
+
+  if (cmd === 'create') {
+    createSketchAtCursor();
+    return;
+  }
+
+  if (cmd === 'delete' || cmd === 'del') {
+    deleteSelectedCadEntity();
+    return;
+  }
+
+  if (cmd === 'help') {
+    setCadStatus('Commands: tool, plane, primitive, move x y z, scale x y z, sketch <type>, extrude <d>, wall <h> <t>, create', '#93c5fd');
+    return;
+  }
+
+  setCadStatus(`Unknown CAD command: ${raw}`, '#fca5a5');
+}
+
+function deleteSelectedCadEntity() {
+  if (selectedCadSolidId) {
+    const before = cadSolids.length;
+    cadSolids = cadSolids.filter(s => s.id !== selectedCadSolidId);
+    if (cadSolids.length !== before) {
+      setCadStatus(`Deleted CAD solid #${selectedCadSolidId}.`, '#fca5a5');
+      selectedCadSolidId = null;
+      rebuildPreview();
+      return true;
+    }
+  }
+
+  if (selectedCadSketchId) {
+    const before = cadSketches.length;
+    cadSketches = cadSketches.filter(s => s.id !== selectedCadSketchId);
+    if (cadSketches.length !== before) {
+      setCadStatus(`Deleted sketch #${selectedCadSketchId}.`, '#fca5a5');
+      selectedCadSketchId = null;
+      rebuildPreview();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getCadSelectableObjects() {
+  const objs = [];
+  if (!previewScene) return objs;
+  previewScene.traverse(obj => {
+    if (obj.userData && (obj.userData.cadSolidData || obj.userData.cadSketchData)) {
+      objs.push(obj);
+    }
+  });
+  return objs;
+}
+
+function handleCadMouseDown(raycaster) {
+  if (cadTool === 'sketch') {
+    const hit = getCadIntersectionFromRay(raycaster, cadPlane, selectedRoom);
+    if (!hit) {
+      setCadStatus('Could not project cursor to active CAD plane.', '#fca5a5');
+      return false;
+    }
+    cadCursorPoint = hit;
+    createSketchFromHit(hit);
+    return true;
+  }
+
+  if (cadTool === 'wall') {
+    const hit = getCadIntersectionFromRay(raycaster, 'floor', selectedRoom);
+    if (!hit) {
+      setCadStatus('Wall tool needs a floor hit point.', '#fca5a5');
+      return false;
+    }
+    cadCursorPoint = hit;
+    createWallFromHit(hit);
+    return true;
+  }
+
+  if (['select', 'move', 'scale', 'extrude'].includes(cadTool)) {
+    const selectable = getCadSelectableObjects();
+    const hits = raycaster.intersectObjects(selectable, true);
+    if (hits.length > 0) {
+      let obj = hits[0].object;
+      while (obj.parent && !(obj.userData.cadSolidData || obj.userData.cadSketchData)) obj = obj.parent;
+
+      if (obj.userData.cadSolidData) {
+        selectedCadSolidId = obj.userData.cadSolidData.id;
+        selectedCadSketchId = null;
+        selectedFurniture = null;
+        selectedDoorway = null;
+        setCadStatus(`Selected CAD solid #${selectedCadSolidId}.`, '#93c5fd');
+        rebuildPreview();
+        return true;
+      }
+
+      if (obj.userData.cadSketchData) {
+        selectedCadSketchId = obj.userData.cadSketchData.id;
+        selectedCadSolidId = null;
+        selectedFurniture = null;
+        selectedDoorway = null;
+        setCadStatus(`Selected sketch #${selectedCadSketchId}.`, '#93c5fd');
+        rebuildPreview();
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function createCadSketchLine(sketch) {
+  const frame = getCadPlaneFrame(sketch.roomIdx, sketch.plane);
+  if (!frame || !sketch.points2D || sketch.points2D.length < 2) return null;
+
+  const pts = sketch.points2D.map(p => cadUVToWorld(frame, p.u, p.v, 0.04));
+  const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+  const isSelected = selectedCadSketchId === sketch.id;
+  const material = new THREE.LineBasicMaterial({
+    color: isSelected ? 0xfacc15 : sketch.color,
+    transparent: true,
+    opacity: 0.95
+  });
+  const line = sketch.closed ? new THREE.LineLoop(geometry, material) : new THREE.Line(geometry, material);
+  line.userData.cadSketchData = { id: sketch.id };
+  return line;
+}
+
+function createCadSolidMesh(solid, previewMode) {
+  if (solid.kind === 'extrude') {
+    const frame = getCadPlaneFrame(solid.roomIdx, solid.plane);
+    if (!frame || !solid.points2D || solid.points2D.length < 3) return null;
+
+    const shape = new THREE.Shape();
+    solid.points2D.forEach((p, i) => {
+      const u = p.u * (solid.scale?.x || 1);
+      const v = p.v * (solid.scale?.y || 1);
+      if (i === 0) shape.moveTo(u, v);
+      else shape.lineTo(u, v);
+    });
+    shape.closePath();
+
+    const depth = Math.max(0.05, (solid.depth || 0.3) * (solid.scale?.z || 1));
+    const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+    const basis = new THREE.Matrix4().makeBasis(frame.u.clone(), frame.v.clone(), frame.n.clone());
+    basis.setPosition(frame.origin.clone());
+    geo.applyMatrix4(basis);
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: solid.color || 0x9aa6b2,
+      roughness: 0.5,
+      metalness: 0.15,
+      transparent: previewMode,
+      opacity: previewMode ? 0.92 : 1
+    });
+
+    if (previewMode && selectedCadSolidId === solid.id) {
+      mat.emissive = new THREE.Color(0x1d4ed8);
+      mat.emissiveIntensity = 0.35;
+    }
+
+    const mesh = new THREE.Mesh(geo, mat);
+    const off = solid.offset || { x: 0, y: 0, z: 0 };
+    mesh.position.add(new THREE.Vector3(off.x, off.y, off.z));
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.cadSolidData = { id: solid.id };
+    return mesh;
+  }
+
+  if (solid.kind === 'wall') {
+    const start = new THREE.Vector3(solid.start.x, solid.start.y || 0, solid.start.z);
+    const end = new THREE.Vector3(solid.end.x, solid.end.y || 0, solid.end.z);
+    const dir = end.clone().sub(start);
+    const len = Math.max(0.1, Math.sqrt(dir.x * dir.x + dir.z * dir.z));
+    const scale = solid.scale || { x: 1, y: 1, z: 1 };
+    const h = Math.max(0.1, (solid.height || 2.8) * scale.y);
+    const t = Math.max(0.05, (solid.thickness || 0.15) * scale.z);
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: solid.color || 0xe2e8f0,
+      roughness: 0.7,
+      metalness: 0.05,
+      transparent: previewMode,
+      opacity: previewMode ? 0.95 : 1
+    });
+    if (previewMode && selectedCadSolidId === solid.id) {
+      mat.emissive = new THREE.Color(0x1d4ed8);
+      mat.emissiveIntensity = 0.35;
+    }
+
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(len * scale.x, h, t), mat);
+    const mid = start.clone().add(end).multiplyScalar(0.5);
+    mesh.position.set(mid.x, (start.y || 0) + h / 2, mid.z);
+    const off = solid.offset || { x: 0, y: 0, z: 0 };
+    mesh.position.x += off.x;
+    mesh.position.y += off.y;
+    mesh.position.z += off.z;
+    mesh.rotation.y = Math.atan2(dir.z, dir.x);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.cadSolidData = { id: solid.id };
+    return mesh;
+  }
+
+  return null;
 }
 
 function hideCustomizer() {
@@ -469,6 +1629,14 @@ function removeRoom(idx) {
   rooms.splice(idx, 1);
   if (selectedRoom >= rooms.length) selectedRoom = rooms.length - 1;
   doorwayConnections = doorwayConnections.filter(dc => dc.room1 !== idx && dc.room2 !== idx);
+  cadSketches = cadSketches
+    .filter(sk => sk.roomIdx !== idx)
+    .map(sk => ({ ...sk, roomIdx: sk.roomIdx > idx ? sk.roomIdx - 1 : sk.roomIdx }));
+  cadSolids = cadSolids
+    .filter(so => so.roomIdx !== idx)
+    .map(so => ({ ...so, roomIdx: so.roomIdx > idx ? so.roomIdx - 1 : so.roomIdx }));
+  if (selectedCadSketchId && !cadSketches.some(sk => sk.id === selectedCadSketchId)) selectedCadSketchId = null;
+  if (selectedCadSolidId && !cadSolids.some(so => so.id === selectedCadSolidId)) selectedCadSolidId = null;
   // Adjust indices for remaining rooms
   doorwayConnections.forEach(dc => {
     if (dc.room1 > idx) dc.room1--;
@@ -484,6 +1652,8 @@ function selectRoom(idx) {
   if (el) el.textContent = rooms[idx].name;
   selectedFurniture = null; // Clear furniture selection when switching rooms
   selectedDoorway = null; // Clear doorway selection
+  clearCadSelection();
+  cadPendingPoint = null;
   updateRoomList();
   rebuildPreview();
 }
@@ -746,7 +1916,7 @@ function updateFurnitureList(filter) {
           <div class="text-white text-xs font-bold truncate">${f.name}</div>
           <div class="text-xs text-gray-500">${f.throwable ? 'DMG:'+f.damage : f.category}</div>
         </div>
-        <button onclick="addFurnitureToRoom('${f.id}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs transition flex-shrink-0">+</button>
+        <button onclick="addFurnitureToRoom('${f.id}')" class="furniture-add-btn bg-blue-600 hover:bg-blue-500 text-white rounded-md transition flex-shrink-0" aria-label="Add ${f.name}">+</button>
       </div>
     `;
     container.appendChild(div);
@@ -758,6 +1928,12 @@ function filterFurniture(cat) { updateFurnitureList(cat); }
 function addFurnitureToRoom(id) {
   if (selectedRoom < 0 || selectedRoom >= rooms.length) return;
   const room = rooms[selectedRoom];
+
+  if (id === 'handgun' && room.items.some(item => item.id === 'handgun')) {
+    showComboText('Only one handgun per room', '#fbbf24');
+    return;
+  }
+
   room.items.push({ id, x: 0, z: 0, rot: 0, scaleX: 1, scaleY: 1, scaleZ: 1 });
   updateRoomList();
   rebuildPreview();
@@ -803,6 +1979,11 @@ function initPreview() {
     mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     
     raycaster.setFromCamera(mouse, previewCamera);
+
+    // CAD sketch and wall tools consume clicks first
+    if ((cadTool === 'sketch' || cadTool === 'wall') && handleCadMouseDown(raycaster)) {
+      return;
+    }
     
     // Check if clicking on gizmo arrow
     if (translationGizmo) {
@@ -825,6 +2006,11 @@ function initPreview() {
         }
       }
     }
+
+    // CAD object picking for select/move/scale/extrude tools
+    if (['select', 'move', 'scale', 'extrude'].includes(cadTool) && handleCadMouseDown(raycaster)) {
+      return;
+    }
     
     // Check if clicking on doorway frame
     const doorwayObjs = [];
@@ -839,6 +2025,7 @@ function initPreview() {
       if (obj.userData.doorwayData) {
         selectedDoorway = obj.userData.doorwayData;
         selectedFurniture = null;
+        clearCadSelection();
         rebuildPreview();
         return;
       }
@@ -856,6 +2043,8 @@ function initPreview() {
       while (obj.parent && !obj.userData.furnitureData) obj = obj.parent;
       if (obj.userData.furnitureData) {
         selectedFurniture = obj.userData.furnitureData;
+        selectedDoorway = null;
+        clearCadSelection();
         rebuildPreview();
         return;
       }
@@ -913,6 +2102,15 @@ function initPreview() {
       return;
     }
     
+    // Track CAD cursor projection while moving mouse for command-based placement
+    if ((cadTool === 'sketch' || cadTool === 'wall') && selectedRoom >= 0) {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, previewCamera);
+      cadCursorPoint = getCadIntersectionFromRay(raycaster, cadTool === 'wall' ? 'floor' : cadPlane, selectedRoom);
+    }
+
     if (!isDragging) return;
     orbitAngle.theta -= (e.clientX - prevMouse.x) * 0.01;
     orbitAngle.phi = Math.max(0.1, Math.min(Math.PI/2 - 0.1, orbitAngle.phi - (e.clientY - prevMouse.y) * 0.01));
@@ -952,6 +2150,7 @@ function initPreview() {
     previewRenderer.render(previewScene, previewCamera);
   }
   animatePreview();
+  syncPreviewViewport();
 }
 
 function rebuildPreview() {
@@ -1328,6 +2527,7 @@ function buildRoomMesh(targetScene, room, highlight, connections) {
   const cz = offsetZ + depth/2;
   const rot = rotation || 0;
   const roomShape = shape || 'rectangle';
+  const previewMode = targetScene === previewScene;
   
   // Get room index
   const roomIndex = rooms.indexOf(room);
@@ -1548,13 +2748,31 @@ function buildRoomMesh(targetScene, room, highlight, connections) {
     
     fMesh.position.set(
       cx + rotatedX,
-      fDef.size.y * scaleY / 2 + 0.08,
+      fDef.size.y * scaleY / 2 + 0.08 + (item.y || 0),
       cz + rotatedZ
     );
     fMesh.rotation.y = (item.rot || 0) + rot;
     fMesh.castShadow = true;
     targetScene.add(fMesh);
   });
+
+  // CAD solids assigned to this room
+  cadSolids
+    .filter(s => s.roomIdx === roomIndex)
+    .forEach(solid => {
+      const mesh = createCadSolidMesh(solid, previewMode);
+      if (mesh) targetScene.add(mesh);
+    });
+
+  // Show sketch outlines only in customizer preview
+  if (previewMode) {
+    cadSketches
+      .filter(sk => sk.roomIdx === roomIndex)
+      .forEach(sketch => {
+        const line = createCadSketchLine(sketch);
+        if (line) targetScene.add(line);
+      });
+  }
 }
 
 function createFurnitureMesh(fDef) {
@@ -3176,8 +4394,37 @@ document.addEventListener('keydown', (e) => {
   
   // Customizer shortcuts
   if (currentState === GameState.CUSTOMIZING) {
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+    const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+    if (!isTyping) {
+      if (e.code === 'KeyQ') setCadTool('select');
+      if (e.code === 'KeyG') setCadTool('move');
+      if (e.code === 'KeyK') setCadTool('sketch');
+      if (e.code === 'KeyX') setCadTool('extrude');
+      if (e.code === 'KeyL') setCadTool('wall');
+      if (e.code === 'KeyR') setCadTool('scale');
+
+      if (e.code === 'Enter') {
+        const cmd = document.getElementById('cadCommandInput');
+        if (cmd) {
+          cmd.focus();
+          e.preventDefault();
+        }
+      }
+    }
+
+    if (e.code === 'Escape') {
+      cadPendingPoint = null;
+      setCadStatus('CAD pending operation canceled.', '#fbbf24');
+    }
+
+    if (isTyping) return;
+
     if (e.code === 'Delete' || e.code === 'Backspace') {
-      if (selectedRoom >= 0 && rooms.length > 1) removeRoom(selectedRoom);
+      if (!deleteSelectedCadEntity()) {
+        if (selectedRoom >= 0 && rooms.length > 1) removeRoom(selectedRoom);
+      }
     }
     return;
   }
@@ -3262,6 +4509,10 @@ window.addEventListener('resize', () => {
   }
   if (renderer) {
     renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  if (currentState === GameState.CUSTOMIZING) {
+    syncPreviewViewport();
   }
 });
 
