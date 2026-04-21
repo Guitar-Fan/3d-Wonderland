@@ -78,6 +78,38 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 #cameraMode { position: fixed; top: 15px; right: 15px; color: #4a7a3088; font-size: 10px;
     z-index: 15; pointer-events: none; text-align: right; display: none; }
 
+/* Powerup inventory panel */
+#powerupInventory {
+    position: fixed;
+    right: 15px;
+    top: 52px;
+    z-index: 15;
+    pointer-events: none;
+    min-width: 240px;
+    color: #8cb873;
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: 0.8px;
+    background: rgba(8, 16, 8, 0.58);
+    border: 1px solid #4a7a3044;
+    padding: 8px 10px;
+    display: none;
+}
+#powerupInventoryTitle {
+    color: #9dd47c;
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    margin-bottom: 4px;
+}
+.powerup-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+.powerup-empty {
+    color: #5c6f4f;
+}
+
 /* Menu Screen */
 #menuScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: linear-gradient(135deg, #1a1508 0%, #2a2010 30%, #1a1508 60%, #0a0a05 100%);
@@ -85,6 +117,30 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 #menuScreen h1 { font-size: 64px; color: #6aaa40; text-shadow: 0 0 30px #4a8a30, 0 0 60px #3a6a20;
     margin-bottom: 8px; letter-spacing: 12px; }
 #menuScreen h2 { font-size: 14px; color: #4a7a3077; letter-spacing: 6px; margin-bottom: 50px; }
+#tankSelectPanel { margin-bottom: 24px; text-align: center; }
+#tankSelectTitle { color: #7cae52; font-size: 11px; letter-spacing: 2px; margin-bottom: 8px; }
+#tankSelectOptions { display: flex; gap: 10px; justify-content: center; }
+#difficultyPanel { margin-bottom: 22px; text-align: center; }
+#difficultyTitle { color: #7cae52; font-size: 11px; letter-spacing: 2px; margin-bottom: 8px; }
+#difficultyOptions { display: flex; gap: 10px; justify-content: center; }
+.tank-option {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid #4a7a3044;
+    color: #86b95a;
+    padding: 8px 14px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    pointer-events: all;
+    font-family: 'Courier New', monospace;
+}
+.tank-option.selected {
+    border-color: #8fd264;
+    color: #c5f18a;
+    box-shadow: 0 0 12px #5f9d3f66;
+}
+#tankLoadHint { color: #6f8e4d; font-size: 10px; margin-top: 8px; letter-spacing: 1px; }
+#difficultyHint { color: #6f8e4d; font-size: 10px; margin-top: 8px; letter-spacing: 1px; }
 .menu-btn { background: transparent; border: 2px solid #6aaa40; color: #6aaa40;
     padding: 14px 45px; font-size: 16px; font-family: 'Courier New', monospace;
     cursor: pointer; pointer-events: all; margin: 7px; letter-spacing: 3px;
@@ -135,23 +191,40 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 <div id="menuScreen">
     <h1>IRON MAZE</h1>
     <h2>Tank Combat Simulator</h2>
+    <div id="tankSelectPanel">
+        <div id="tankSelectTitle">PLAYER TANK</div>
+        <div id="tankSelectOptions">
+            <button id="tankClassicBtn" class="tank-option selected" onclick="selectTankVariant('classic')">CLASSIC</button>
+            <button id="tankImportedBtn" class="tank-option" onclick="selectTankVariant('imported')">IMPORTED GLB</button>
+        </div>
+        <div id="tankLoadHint">Imported model: loading...</div>
+    </div>
+    <div id="difficultyPanel">
+        <div id="difficultyTitle">AI DIFFICULTY</div>
+        <div id="difficultyOptions">
+            <button id="difficultyCasualBtn" class="tank-option" onclick="selectDifficulty('casual')">CASUAL</button>
+            <button id="difficultyVeteranBtn" class="tank-option selected" onclick="selectDifficulty('veteran')">VETERAN</button>
+            <button id="difficultyNightmareBtn" class="tank-option" onclick="selectDifficulty('nightmare')">NIGHTMARE</button>
+        </div>
+        <div id="difficultyHint">Veteran: balanced enemy tactics</div>
+    </div>
     <button class="menu-btn" onclick="showMissions()">START MISSION</button>
     <div id="missionSelect">
         <div class="mission-card" onclick="startMission(1)">
             <h3>MISSION 1: SCOUTING</h3>
-            <p>Destroy 3 brown enemy tanks in the training yard</p>
+            <p>Escort a convoy to extraction through the training yard</p>
         </div>
         <div class="mission-card" onclick="startMission(2)">
             <h3>MISSION 2: COUNTERATTACK</h3>
-            <p>Eliminate 5 enemy tanks including fast-moving grey scouts</p>
+            <p>Hold the command post and defend base integrity</p>
         </div>
         <div class="mission-card" onclick="startMission(3)">
             <h3>MISSION 3: FORTRESS</h3>
-            <p>Destroy 6 tanks with armored green defenders holding positions</p>
+            <p>Survive escalating enemy waves in the fortress sector</p>
         </div>
         <div class="mission-card" onclick="startMission(4)">
             <h3>MISSION 4: TOTAL WAR</h3>
-            <p>Survive and destroy 8 mixed enemy tanks in the full maze</p>
+            <p>Face the enemy ace in a boss tank duel</p>
         </div>
     </div>
 </div>
@@ -181,9 +254,13 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
         WASD - Move | Mouse - Aim Turret<br>
         CLICK - Fire Shell | E - Lay Mine<br>
         SPACE - Detonate Mines | R - Reload<br>
-        V - Camera View | ESC - Pause
+        1-5 - Use Powerup | V - Camera View | ESC - Pause
     </div>
     <div id="cameraMode">CAMERA: FIRST-PERSON</div>
+    <div id="powerupInventory">
+        <div id="powerupInventoryTitle">POWERUP INVENTORY</div>
+        <div id="powerupInventoryBody"></div>
+    </div>
 </div>
 <div id="damageOverlay"></div>
 
@@ -251,7 +328,9 @@ body { overflow: hidden; background: #000; font-family: 'Courier New', monospace
 
 <!-- Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+<script src="alternateTankLoader.js"></script>
 
 <script>
 // ======================= SYNTHESIZED SOUNDS =======================
@@ -523,6 +602,9 @@ const G = {
     // Mission
     currentMission: 0, missionKills: 0, missionTargets: 0,
     missionActive: false, missionComplete: false, missionFailed: false,
+    objectiveType: 'eliminate',
+    objectiveState: null,
+    objectiveStatusLine: '',
     paused: false, pendingMission: 0,
     // Input
     keys: {}, mouse: { x: 0, y: 0, clicking: false },
@@ -539,7 +621,30 @@ const G = {
     // Lights
     sunLight: null, ambientLight: null,
     // Sound system
-    soundsReady: false
+    soundsReady: false,
+    // Player tank selection
+    playerTankVariant: 'classic',
+    activeTankVariant: 'classic',
+    altTankReady: false,
+    altTankLoadError: '',
+    // Enemy difficulty
+    difficulty: 'veteran',
+    currentDifficulty: 'veteran',
+    enemyUidCounter: 0,
+    // Powerups
+    powerupPickups: [],
+    powerupInventory: {},
+    powerupRespawnTimer: 0,
+    playerEffects: {
+        overdriveTimer: 0,
+        shieldTimer: 0
+    },
+    // Air support bomb
+    airstrikeAim: false,
+    savedCameraMode: 0,
+    activeAirBombs: [],
+    raycaster: new THREE.Raycaster(),
+    pointerNdc: new THREE.Vector2()
 };
 
 // ======================= MAZE LAYOUTS =======================
@@ -588,12 +693,923 @@ const MAZES = [
     ]}
 ];
 
+const MISSION_OBJECTIVES = {
+    1: {
+        type: 'rescue_convoy',
+        label: 'RESCUE CONVOY'
+    },
+    2: {
+        type: 'defend_base',
+        label: 'DEFEND BASE'
+    },
+    3: {
+        type: 'survive_waves',
+        label: 'SURVIVE WAVES'
+    },
+    4: {
+        type: 'boss_duel',
+        label: 'BOSS DUEL'
+    }
+};
+
+const WAVE_MISSION_GROUPS = [
+    [
+        { x: -26, z: -24, type: 'brown' },
+        { x: 24, z: -24, type: 'brown' },
+        { x: 0, z: -30, type: 'grey' }
+    ],
+    [
+        { x: -30, z: 10, type: 'grey' },
+        { x: 28, z: 10, type: 'grey' },
+        { x: 0, z: -32, type: 'green' }
+    ],
+    [
+        { x: -24, z: -8, type: 'green' },
+        { x: 24, z: -8, type: 'green' },
+        { x: -6, z: -30, type: 'grey' },
+        { x: 6, z: -30, type: 'grey' }
+    ]
+];
+
+const POWERUP_TYPES = {
+    air_bomb: { key: '1', label: 'AIR BOMB', color: 0xff5f3a, maxStack: 2 },
+    overdrive: { key: '2', label: 'OVERDRIVE', color: 0xffcc33, maxStack: 2, duration: 12 },
+    repair_kit: { key: '3', label: 'REPAIR KIT', color: 0x5fdc7b, maxStack: 2 },
+    shield_core: { key: '4', label: 'SHIELD CORE', color: 0x55b3ff, maxStack: 2, duration: 12 },
+    emp_burst: { key: '5', label: 'EMP BURST', color: 0xc18cff, maxStack: 2 }
+};
+
+const POWERUP_KEY_ORDER = ['air_bomb', 'overdrive', 'repair_kit', 'shield_core', 'emp_burst'];
+const MAX_WORLD_POWERUPS = 6;
+
+function resetPowerupState() {
+    G.powerupPickups.forEach(pickup => {
+        if (pickup.mesh) G.scene.remove(pickup.mesh);
+    });
+    G.activeAirBombs.forEach(bomb => {
+        if (bomb.mesh) G.scene.remove(bomb.mesh);
+        if (bomb.marker) G.scene.remove(bomb.marker);
+    });
+
+    G.powerupPickups = [];
+    G.activeAirBombs = [];
+    G.powerupRespawnTimer = 4 + Math.random() * 2;
+    G.airstrikeAim = false;
+    G.savedCameraMode = 0;
+
+    G.playerEffects.overdriveTimer = 0;
+    G.playerEffects.shieldTimer = 0;
+
+    const inventory = {};
+    POWERUP_KEY_ORDER.forEach(typeId => {
+        inventory[typeId] = 0;
+    });
+    G.powerupInventory = inventory;
+}
+
+function createPowerupPickupMesh(typeId) {
+    const def = POWERUP_TYPES[typeId];
+    const color = def ? def.color : 0xffffff;
+
+    const group = new THREE.Group();
+
+    const core = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.38, 0),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.45, roughness: 0.25, metalness: 0.55 })
+    );
+    core.position.y = 1.2;
+    core.castShadow = true;
+    group.add(core);
+
+    const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.6, 0.06, 8, 18),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 })
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.2;
+    group.add(ring);
+
+    const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.1, 2.0, 10),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22 })
+    );
+    beam.position.y = 1.0;
+    group.add(beam);
+
+    return group;
+}
+
+function pointBlockedByWall(x, z, pad) {
+    const margin = pad || 0.8;
+    for (const wall of G.walls) {
+        if (x + margin > wall.minX && x - margin < wall.maxX && z + margin > wall.minZ && z - margin < wall.maxZ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function spawnPowerupPickup(typeId, x, z) {
+    const mesh = createPowerupPickupMesh(typeId);
+    mesh.position.set(x, 0, z);
+    G.scene.add(mesh);
+    G.powerupPickups.push({
+        typeId,
+        mesh,
+        x,
+        z,
+        bobPhase: Math.random() * Math.PI * 2
+    });
+}
+
+function chooseRandomPowerupType() {
+    const roll = Math.random();
+    if (roll < 0.2) return 'air_bomb';
+    if (roll < 0.45) return 'overdrive';
+    if (roll < 0.65) return 'repair_kit';
+    if (roll < 0.82) return 'shield_core';
+    return 'emp_burst';
+}
+
+function spawnRandomPowerup() {
+    const typeId = chooseRandomPowerupType();
+    for (let i = 0; i < 18; i++) {
+        const x = -34 + Math.random() * 68;
+        const z = -34 + Math.random() * 68;
+        if (pointBlockedByWall(x, z, 1.2)) continue;
+
+        const tooCloseToPlayer = Math.sqrt((x - G.playerPos.x) ** 2 + (z - G.playerPos.z) ** 2) < 6;
+        if (tooCloseToPlayer) continue;
+
+        const tooCloseToOtherPickup = G.powerupPickups.some(p => ((p.x - x) ** 2 + (p.z - z) ** 2) < 16);
+        if (tooCloseToOtherPickup) continue;
+
+        spawnPowerupPickup(typeId, x, z);
+        return true;
+    }
+    return false;
+}
+
+function spawnInitialPowerups() {
+    const initialCount = Math.min(MAX_WORLD_POWERUPS, 3 + G.currentMission);
+    for (let i = 0; i < initialCount; i++) {
+        spawnRandomPowerup();
+    }
+}
+
+function formatPowerupStatus(typeId) {
+    if (typeId === 'overdrive' && G.playerEffects.overdriveTimer > 0) {
+        return ' (' + Math.ceil(G.playerEffects.overdriveTimer) + 's)';
+    }
+    if (typeId === 'shield_core' && G.playerEffects.shieldTimer > 0) {
+        return ' (' + Math.ceil(G.playerEffects.shieldTimer) + 's)';
+    }
+    return '';
+}
+
+function updatePowerupInventoryHUD() {
+    const panel = document.getElementById('powerupInventory');
+    const body = document.getElementById('powerupInventoryBody');
+    if (!panel || !body) return;
+
+    if (!G.missionActive || G.missionComplete || G.missionFailed || G.paused) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = 'block';
+    let html = '';
+    for (const typeId of POWERUP_KEY_ORDER) {
+        const def = POWERUP_TYPES[typeId];
+        const count = G.powerupInventory[typeId] || 0;
+        const status = formatPowerupStatus(typeId);
+        const cls = count === 0 ? 'powerup-item powerup-empty' : 'powerup-item';
+        html += '<div class="' + cls + '"><span>[' + def.key + '] ' + def.label + status + '</span><span>x' + count + '</span></div>';
+    }
+    if (G.airstrikeAim) {
+        html += '<div class="powerup-item"><span>AIR BOMB TARGETING ACTIVE</span><span>CLICK</span></div>';
+    }
+    body.innerHTML = html;
+}
+
+function consumePowerup(typeId, amount) {
+    const next = Math.max(0, (G.powerupInventory[typeId] || 0) - (amount || 1));
+    G.powerupInventory[typeId] = next;
+}
+
+function activatePowerupByKey(keyNum) {
+    const idx = Number(keyNum) - 1;
+    if (idx < 0 || idx >= POWERUP_KEY_ORDER.length) return;
+
+    const typeId = POWERUP_KEY_ORDER[idx];
+    const count = G.powerupInventory[typeId] || 0;
+    if (count <= 0) {
+        showNotification('NO ' + POWERUP_TYPES[typeId].label + ' IN INVENTORY');
+        return;
+    }
+
+    if (typeId === 'air_bomb') {
+        enterAirstrikeAim();
+        return;
+    }
+
+    consumePowerup(typeId, 1);
+    applyPowerup(typeId);
+}
+
+function enterAirstrikeAim() {
+    if (G.airstrikeAim) return;
+    if ((G.powerupInventory.air_bomb || 0) <= 0) {
+        showNotification('NO AIR BOMB AVAILABLE');
+        return;
+    }
+
+    G.airstrikeAim = true;
+    G.savedCameraMode = G.cameraMode;
+    G.cameraMode = 2;
+
+    if (document.pointerLockElement) {
+        document.exitPointerLock();
+    }
+    showNotification('AIR BOMB AIM - LEFT CLICK TARGET');
+}
+
+function exitAirstrikeAim(restoreCameraOnly) {
+    if (!G.airstrikeAim) return;
+    G.airstrikeAim = false;
+    G.cameraMode = G.savedCameraMode;
+    if (!restoreCameraOnly && G.missionActive && !G.paused) {
+        G.renderer.domElement.requestPointerLock();
+    }
+}
+
+function getGroundPointFromScreen(clientX, clientY) {
+    if (!G.renderer || !G.camera) return null;
+
+    const rect = G.renderer.domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+
+    G.pointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    G.pointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    G.raycaster.setFromCamera(G.pointerNdc, G.camera);
+
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hit = new THREE.Vector3();
+    const ok = G.raycaster.ray.intersectPlane(plane, hit);
+    return ok ? hit : null;
+}
+
+function launchAirBomb(targetX, targetZ) {
+    const bomb = new THREE.Group();
+
+    const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.55, 10, 10),
+        new THREE.MeshStandardMaterial({ color: 0x2f2f2f, roughness: 0.35, metalness: 0.7 })
+    );
+    body.castShadow = true;
+    bomb.add(body);
+
+    const nose = new THREE.Mesh(
+        new THREE.ConeGeometry(0.28, 0.55, 8),
+        new THREE.MeshStandardMaterial({ color: 0x646464, roughness: 0.4, metalness: 0.6 })
+    );
+    nose.position.y = 0.52;
+    bomb.add(nose);
+
+    bomb.position.set(targetX, 32, targetZ);
+    G.scene.add(bomb);
+
+    const marker = new THREE.Mesh(
+        new THREE.RingGeometry(0.7, 1.25, 18),
+        new THREE.MeshBasicMaterial({ color: 0xff6644, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+    );
+    marker.rotation.x = -Math.PI / 2;
+    marker.position.set(targetX, 0.05, targetZ);
+    G.scene.add(marker);
+
+    G.activeAirBombs.push({
+        mesh: bomb,
+        marker,
+        x: targetX,
+        z: targetZ,
+        y: 32,
+        vy: -4,
+        radius: 10,
+        damage: 3
+    });
+}
+
+function detonateAirBomb(bomb) {
+    createExplosion(bomb.x, 0.9, bomb.z, 8.5);
+    createExplosion(bomb.x, 1.2, bomb.z, 5.5);
+
+    for (const enemy of G.enemies) {
+        if (!enemy.alive) continue;
+        const dx = enemy.x - bomb.x;
+        const dz = enemy.z - bomb.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > bomb.radius) continue;
+
+        const falloff = clampNum(1 - dist / bomb.radius, 0, 1);
+        const hits = Math.max(1, Math.round(bomb.damage + falloff * 3));
+        for (let i = 0; i < hits && enemy.alive; i++) {
+            damageEnemy(enemy, 1);
+        }
+    }
+
+    const playerDist = Math.sqrt((G.playerPos.x - bomb.x) ** 2 + (G.playerPos.z - bomb.z) ** 2);
+    if (playerDist < bomb.radius * 0.8) {
+        const ratio = clampNum(1 - playerDist / (bomb.radius * 0.8), 0, 1);
+        damagePlayer(Math.round(22 + ratio * 30));
+    }
+
+    showNotification('AIR BOMB IMPACT');
+}
+
+function tryDeployAirstrike(clientX, clientY) {
+    if (!G.airstrikeAim) return false;
+    const hit = getGroundPointFromScreen(clientX, clientY);
+    if (!hit) {
+        showNotification('INVALID TARGET');
+        return false;
+    }
+
+    if ((G.powerupInventory.air_bomb || 0) <= 0) {
+        showNotification('AIR BOMB CHARGE NOT FOUND');
+        exitAirstrikeAim(false);
+        return false;
+    }
+
+    consumePowerup('air_bomb', 1);
+    launchAirBomb(hit.x, hit.z);
+    showNotification('AIR BOMB INBOUND');
+    exitAirstrikeAim(false);
+    return true;
+}
+
+function applyPowerup(typeId) {
+    if (typeId === 'overdrive') {
+        G.playerEffects.overdriveTimer = Math.max(G.playerEffects.overdriveTimer, POWERUP_TYPES.overdrive.duration);
+        showNotification('OVERDRIVE ONLINE');
+        return;
+    }
+
+    if (typeId === 'repair_kit') {
+        const before = G.hull;
+        G.hull = Math.min(100, G.hull + 40);
+        showNotification('REPAIR APPLIED +' + Math.round(G.hull - before) + '%');
+        return;
+    }
+
+    if (typeId === 'shield_core') {
+        G.playerEffects.shieldTimer = Math.max(G.playerEffects.shieldTimer, POWERUP_TYPES.shield_core.duration);
+        showNotification('SHIELD MATRIX ACTIVE');
+        return;
+    }
+
+    if (typeId === 'emp_burst') {
+        const radius = 16;
+        let jammed = 0;
+        for (const enemy of G.enemies) {
+            if (!enemy.alive) continue;
+            const dist = Math.sqrt((enemy.x - G.playerPos.x) ** 2 + (enemy.z - G.playerPos.z) ** 2);
+            if (dist > radius) continue;
+            enemy.empTimer = Math.max(enemy.empTimer || 0, 6);
+            enemy.fireCooldown = Math.max(enemy.fireCooldown, 1.5);
+            jammed++;
+        }
+
+        createExplosion(G.playerPos.x, 0.8, G.playerPos.z, 3.8);
+        showNotification('EMP BURST: ' + jammed + ' HOSTILES JAMMED');
+    }
+}
+
+function updatePowerupSystem(dt) {
+    if (G.playerEffects.overdriveTimer > 0) G.playerEffects.overdriveTimer = Math.max(0, G.playerEffects.overdriveTimer - dt);
+    if (G.playerEffects.shieldTimer > 0) G.playerEffects.shieldTimer = Math.max(0, G.playerEffects.shieldTimer - dt);
+
+    for (let i = G.powerupPickups.length - 1; i >= 0; i--) {
+        const pickup = G.powerupPickups[i];
+        if (!pickup.mesh) continue;
+
+        pickup.mesh.rotation.y += dt * 1.3;
+        pickup.mesh.position.y = 0.1 + 0.95 + Math.sin(G.time * 2.4 + pickup.bobPhase) * 0.2;
+
+        const dist = Math.sqrt((pickup.x - G.playerPos.x) ** 2 + (pickup.z - G.playerPos.z) ** 2);
+        if (dist < 1.7) {
+            const maxStack = POWERUP_TYPES[pickup.typeId].maxStack;
+            const current = G.powerupInventory[pickup.typeId] || 0;
+            if (current < maxStack) {
+                G.powerupInventory[pickup.typeId] = current + 1;
+                showNotification('PICKED: ' + POWERUP_TYPES[pickup.typeId].label);
+                G.scene.remove(pickup.mesh);
+                G.powerupPickups.splice(i, 1);
+            }
+        }
+    }
+
+    G.powerupRespawnTimer -= dt;
+    if (G.powerupRespawnTimer <= 0 && G.powerupPickups.length < MAX_WORLD_POWERUPS) {
+        spawnRandomPowerup();
+        G.powerupRespawnTimer = 9 + Math.random() * 7;
+    }
+
+    for (let i = G.activeAirBombs.length - 1; i >= 0; i--) {
+        const bomb = G.activeAirBombs[i];
+        bomb.vy -= 28 * dt;
+        bomb.y += bomb.vy * dt;
+        bomb.mesh.position.set(bomb.x, bomb.y, bomb.z);
+        bomb.mesh.rotation.z += dt * 1.8;
+
+        if (bomb.marker) {
+            bomb.marker.rotation.z += dt * 2.2;
+            bomb.marker.material.opacity = 0.55 + Math.sin(G.time * 12) * 0.2;
+        }
+
+        if (bomb.y <= 0.45) {
+            detonateAirBomb(bomb);
+            if (bomb.mesh) G.scene.remove(bomb.mesh);
+            if (bomb.marker) G.scene.remove(bomb.marker);
+            G.activeAirBombs.splice(i, 1);
+        }
+    }
+
+    updatePowerupInventoryHUD();
+}
+
+function getMissionObjectiveConfig(missionNum) {
+    return MISSION_OBJECTIVES[missionNum] || { type: 'eliminate', label: 'ELIMINATE HOSTILES' };
+}
+
+function createObjectiveMarker(x, z, color) {
+    const marker = new THREE.Group();
+
+    const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(2.8, 0.14, 10, 36),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, roughness: 0.4, metalness: 0.2 })
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.05;
+    marker.add(ring);
+
+    const beacon = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.28, 0.28, 2.2, 10),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35 })
+    );
+    beacon.position.y = 1.2;
+    marker.add(beacon);
+
+    marker.position.set(x, 0, z);
+    G.scene.add(marker);
+    return marker;
+}
+
+function createConvoyVehicle(x, z, idx) {
+    const unit = new THREE.Group();
+
+    const hull = new THREE.Mesh(
+        new THREE.BoxGeometry(1.7, 0.55, 2.5),
+        new THREE.MeshStandardMaterial({ color: 0x506b8a, roughness: 0.55, metalness: 0.2 })
+    );
+    hull.position.y = 0.6;
+    hull.castShadow = true;
+    unit.add(hull);
+
+    const cabin = new THREE.Mesh(
+        new THREE.BoxGeometry(1.0, 0.45, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x708cab, roughness: 0.45, metalness: 0.2 })
+    );
+    cabin.position.set(0, 1.0, 0.1);
+    cabin.castShadow = true;
+    unit.add(cabin);
+
+    const idLight = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0x7ad8ff })
+    );
+    idLight.position.set(0, 0.95, -1.05);
+    unit.add(idLight);
+
+    unit.position.set(x, 0, z);
+    G.scene.add(unit);
+
+    return {
+        id: idx,
+        mesh: unit,
+        x,
+        z,
+        angle: Math.PI,
+        speed: 2.2 + idx * 0.1,
+        health: 85,
+        maxHealth: 85,
+        alive: true,
+        arrived: false,
+        waypointIndex: 0,
+        dangerPulse: 0
+    };
+}
+
+function setupMissionObjective(missionNum) {
+    const objective = getMissionObjectiveConfig(missionNum);
+    G.objectiveType = objective.type;
+    G.objectiveStatusLine = '';
+
+    if (objective.type === 'rescue_convoy') {
+        const convoy = [
+            createConvoyVehicle(-24, 25, 0),
+            createConvoyVehicle(-22.2, 27, 1),
+            createConvoyVehicle(-25.8, 27, 2)
+        ];
+        const waypoints = [
+            { x: -24, z: 15 },
+            { x: -24, z: 2 },
+            { x: -24, z: -10 },
+            { x: -24, z: -22 },
+            { x: -24, z: -27 }
+        ];
+        const extraction = { x: -24, z: -27 };
+        G.objectiveState = {
+            convoy,
+            waypoints,
+            extraction,
+            marker: createObjectiveMarker(extraction.x, extraction.z, 0x66e1ff),
+            minSurvivors: 2,
+            arrivedCount: 0
+        };
+        return;
+    }
+
+    if (objective.type === 'defend_base') {
+        const base = new THREE.Group();
+        const pad = new THREE.Mesh(
+            new THREE.CylinderGeometry(3.5, 3.5, 0.45, 24),
+            new THREE.MeshStandardMaterial({ color: 0x505a46, roughness: 0.9, metalness: 0.05 })
+        );
+        pad.position.y = 0.22;
+        pad.receiveShadow = true;
+        base.add(pad);
+
+        const bunker = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.15, 1.35, 1.8, 16),
+            new THREE.MeshStandardMaterial({ color: 0x6d7d58, roughness: 0.65, metalness: 0.12 })
+        );
+        bunker.position.y = 1.25;
+        bunker.castShadow = true;
+        base.add(bunker);
+
+        base.position.set(0, 0, 0);
+        G.scene.add(base);
+
+        G.objectiveState = {
+            base,
+            marker: createObjectiveMarker(0, 0, 0xa4ff76),
+            maxHealth: 260,
+            health: 260,
+            timer: 115,
+            reinforcementTimer: 14
+        };
+        return;
+    }
+
+    if (objective.type === 'survive_waves') {
+        const totalTargets = WAVE_MISSION_GROUPS.reduce((sum, group) => sum + group.length, 0);
+        G.objectiveState = {
+            waves: WAVE_MISSION_GROUPS,
+            waveIndex: 0,
+            phase: 'fighting',
+            intermission: 0,
+            totalWaves: WAVE_MISSION_GROUPS.length,
+            totalTargets
+        };
+        return;
+    }
+
+    if (objective.type === 'boss_duel') {
+        G.objectiveState = {
+            bossName: 'IRON TITAN',
+            bossUid: null
+        };
+        return;
+    }
+
+    G.objectiveState = {};
+}
+
+function spawnMissionEnemies(mazeIdx) {
+    const type = G.objectiveType;
+    if (type === 'survive_waves') {
+        spawnWaveGroup(0);
+        return;
+    }
+    if (type === 'boss_duel') {
+        spawnEnemies(mazeIdx, [
+            {
+                x: 0,
+                z: -32,
+                type: 'green',
+                health: 12,
+                speedMul: 1.1,
+                turnMul: 1.1,
+                fireRateMul: 0.72,
+                shellSpeedMul: 1.15,
+                skillBonus: 0.12,
+                personality: 'enforcer',
+                isBoss: true
+            }
+        ]);
+        return;
+    }
+    spawnEnemies(mazeIdx);
+}
+
+function spawnWaveGroup(index) {
+    const state = G.objectiveState;
+    if (!state || !state.waves || !state.waves[index]) return;
+    spawnEnemies(G.currentMission - 1, state.waves[index]);
+    showNotification('WAVE ' + (index + 1) + ' / ' + state.totalWaves + ' INCOMING');
+    state.waveIndex = index;
+    state.phase = 'fighting';
+    state.intermission = 0;
+}
+
+function getMissionObjectiveLabel() {
+    return getMissionObjectiveConfig(G.currentMission).label;
+}
+
+function updateMissionObjectives(dt) {
+    if (!G.objectiveState) return;
+
+    if (G.objectiveType === 'rescue_convoy') {
+        updateConvoyObjective(dt);
+    } else if (G.objectiveType === 'defend_base') {
+        updateDefendBaseObjective(dt);
+    } else if (G.objectiveType === 'survive_waves') {
+        updateWaveObjective(dt);
+    } else if (G.objectiveType === 'boss_duel') {
+        updateBossObjective(dt);
+    }
+
+    updateMissionText();
+}
+
+function updateConvoyObjective(dt) {
+    const state = G.objectiveState;
+    if (!state || !state.convoy) return;
+
+    state.arrivedCount = 0;
+    let aliveCount = 0;
+
+    state.convoy.forEach(unit => {
+        if (!unit.alive) return;
+
+        if (unit.arrived) {
+            state.arrivedCount++;
+            return;
+        }
+
+        aliveCount++;
+        const target = state.waypoints[Math.min(unit.waypointIndex, state.waypoints.length - 1)];
+        const dx = target.x - unit.x;
+        const dz = target.z - unit.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > 0.05) {
+            const step = Math.min(dist, unit.speed * dt);
+            unit.x += (dx / dist) * step;
+            unit.z += (dz / dist) * step;
+            unit.angle = Math.atan2(-(dx / dist), -(dz / dist));
+            unit.mesh.position.set(unit.x, 0, unit.z);
+            unit.mesh.rotation.y = unit.angle;
+        }
+
+        if (dist < 1.1 && unit.waypointIndex < state.waypoints.length - 1) {
+            unit.waypointIndex++;
+        } else if (dist < 1.1 && unit.waypointIndex >= state.waypoints.length - 1) {
+            unit.arrived = true;
+            state.arrivedCount++;
+            unit.mesh.visible = false;
+            showNotification('CONVOY TRUCK REACHED EXTRACTION');
+        }
+
+        for (const enemy of G.enemies) {
+            if (!enemy.alive) continue;
+            const ex = enemy.x - unit.x;
+            const ez = enemy.z - unit.z;
+            const enemyDist = Math.sqrt(ex * ex + ez * ez);
+            if (enemyDist < 6.2) {
+                unit.health -= dt * (2.2 + enemy.skill * 2.4);
+            }
+        }
+
+        if (unit.health <= 0 && unit.alive) {
+            unit.alive = false;
+            aliveCount--;
+            createExplosion(unit.x, 0.6, unit.z, 3.2);
+            G.scene.remove(unit.mesh);
+            showNotification('CONVOY UNIT DESTROYED');
+        }
+    });
+
+    G.objectiveStatusLine = 'ESCORT: ' + state.arrivedCount + ' / ' + state.minSurvivors + ' EXTRACTED';
+    if (aliveCount + state.arrivedCount < state.minSurvivors && !G.missionFailed) {
+        failMission('CONVOY LOST');
+    }
+}
+
+function updateDefendBaseObjective(dt) {
+    const state = G.objectiveState;
+    if (!state || !state.base) return;
+
+    state.timer = Math.max(0, state.timer - dt);
+    state.reinforcementTimer -= dt;
+
+    const basePos = state.base.position;
+    let attackers = 0;
+    for (const enemy of G.enemies) {
+        if (!enemy.alive) continue;
+        const dx = enemy.x - basePos.x;
+        const dz = enemy.z - basePos.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 8.5) attackers++;
+    }
+
+    if (attackers > 0) {
+        state.health -= attackers * dt * 3.4;
+    }
+
+    if (state.reinforcementTimer <= 0 && state.timer > 18) {
+        const aliveEnemies = G.enemies.filter(e => e.alive).length;
+        if (aliveEnemies < 6) {
+            spawnEnemies(G.currentMission - 1, [
+                { x: -34, z: -28, type: 'grey' },
+                { x: 34, z: -28, type: 'brown' }
+            ]);
+            showNotification('HOSTILE REINFORCEMENTS DETECTED');
+        }
+        state.reinforcementTimer = 13 + Math.random() * 5;
+    }
+
+    state.health = Math.max(0, state.health);
+    const basePct = Math.max(0, Math.round((state.health / state.maxHealth) * 100));
+    G.objectiveStatusLine = 'BASE: ' + basePct + '% | HOLD: ' + Math.ceil(state.timer) + 's';
+
+    if (state.health <= 0 && !G.missionFailed) {
+        failMission('BASE DESTROYED');
+    }
+}
+
+function updateWaveObjective(dt) {
+    const state = G.objectiveState;
+    if (!state || !state.waves) return;
+
+    const aliveEnemies = G.enemies.filter(e => e.alive).length;
+    if (state.phase === 'fighting' && aliveEnemies === 0) {
+        if (state.waveIndex >= state.totalWaves - 1) {
+            state.phase = 'done';
+        } else {
+            state.phase = 'intermission';
+            state.intermission = 5.5;
+            showNotification('WAVE CLEARED - PREPARE FOR NEXT WAVE');
+        }
+    } else if (state.phase === 'intermission') {
+        state.intermission -= dt;
+        if (state.intermission <= 0) {
+            spawnWaveGroup(state.waveIndex + 1);
+        }
+    }
+
+    if (state.phase === 'intermission') {
+        G.objectiveStatusLine = 'WAVE ' + (state.waveIndex + 1) + '/' + state.totalWaves + ' | NEXT IN ' + Math.max(0, Math.ceil(state.intermission)) + 's';
+    } else {
+        G.objectiveStatusLine = 'WAVE ' + (state.waveIndex + 1) + '/' + state.totalWaves + ' | HOSTILES: ' + aliveEnemies;
+    }
+}
+
+function updateBossObjective(dt) {
+    const state = G.objectiveState;
+    if (!state) return;
+    const boss = G.enemies.find(e => e.alive && e.isBoss);
+    if (boss) {
+        state.bossUid = boss.uid;
+        G.objectiveStatusLine = state.bossName + ' HP: ' + boss.health + ' / ' + boss.maxHealth;
+    } else {
+        G.objectiveStatusLine = state.bossName + ' ELIMINATED';
+    }
+
+    const pulse = 0.4 + Math.sin(G.time * 3.2) * 0.1;
+    if (boss && boss.mesh) {
+        boss.mesh.scale.set(1.2 + pulse * 0.03, 1.2 + pulse * 0.03, 1.2 + pulse * 0.03);
+    }
+}
+
+function completeMission(message) {
+    if (G.missionComplete || G.missionFailed) return;
+    G.missionComplete = true;
+    G.missionActive = false;
+    exitAirstrikeAim(true);
+    document.getElementById('powerupInventory').style.display = 'none';
+    if (SOUNDS) SOUNDS.victory();
+    showNotification(message || 'MISSION COMPLETE!');
+    setTimeout(() => showEndScreen(true), 1500);
+}
+
+function failMission(message) {
+    if (G.missionComplete || G.missionFailed) return;
+    G.missionFailed = true;
+    G.missionActive = false;
+    exitAirstrikeAim(true);
+    document.getElementById('powerupInventory').style.display = 'none';
+    if (SOUNDS) SOUNDS.defeat();
+    showNotification(message || 'MISSION FAILED');
+    setTimeout(() => showEndScreen(false), 1200);
+}
+
 // ======================= TANK TYPES =======================
 const TANK_TYPES = {
     brown: { color: 0x8B5E3C, speed: 3, turnSpeed: 1.0, fireRate: 3.0, health: 1, shellSpeed: 20, ai: 'patrol' },
     grey:  { color: 0x888888, speed: 7, turnSpeed: 1.8, fireRate: 2.0, health: 1, shellSpeed: 25, ai: 'chase' },
     green: { color: 0x3a6a2a, speed: 2, turnSpeed: 0.8, fireRate: 4.0, health: 3, shellSpeed: 18, ai: 'guard' }
 };
+
+const DIFFICULTY_PRESETS = {
+    casual: {
+        label: 'CASUAL',
+        skillMul: 0.82,
+        speedMul: 0.9,
+        turnMul: 0.92,
+        fireRateMul: 1.25,
+        shellSpeedMul: 0.9,
+        reactionMul: 0.82,
+        accuracyMul: 0.84,
+        teamworkMul: 0.8,
+        aggressionMul: 0.82,
+        ricochetMul: 0.65
+    },
+    veteran: {
+        label: 'VETERAN',
+        skillMul: 1.0,
+        speedMul: 1.0,
+        turnMul: 1.0,
+        fireRateMul: 1.0,
+        shellSpeedMul: 1.0,
+        reactionMul: 1.0,
+        accuracyMul: 1.0,
+        teamworkMul: 1.0,
+        aggressionMul: 1.0,
+        ricochetMul: 1.0
+    },
+    nightmare: {
+        label: 'NIGHTMARE',
+        skillMul: 1.2,
+        speedMul: 1.14,
+        turnMul: 1.12,
+        fireRateMul: 0.78,
+        shellSpeedMul: 1.12,
+        reactionMul: 1.22,
+        accuracyMul: 1.2,
+        teamworkMul: 1.28,
+        aggressionMul: 1.2,
+        ricochetMul: 1.35
+    }
+};
+
+const PERSONALITY_PROFILES = {
+    brown: [
+        { id: 'timid', label: 'Timid', aggression: 0.72, awareness: 0.9, accuracy: 0.86, speed: 0.92, cadence: 1.15, teamwork: 0.95, holdRange: 1.2, retreat: 1.35, strafe: 0.8, ricochet: 0.55 },
+        { id: 'steady', label: 'Steady', aggression: 0.92, awareness: 1.0, accuracy: 1.0, speed: 1.0, cadence: 1.0, teamwork: 1.0, holdRange: 1.0, retreat: 1.0, strafe: 1.0, ricochet: 0.95 },
+        { id: 'trickster', label: 'Trickster', aggression: 1.0, awareness: 1.0, accuracy: 0.92, speed: 1.06, cadence: 0.98, teamwork: 0.9, holdRange: 0.95, retreat: 1.0, strafe: 1.25, ricochet: 1.25 }
+    ],
+    grey: [
+        { id: 'aggressor', label: 'Aggressor', aggression: 1.22, awareness: 1.0, accuracy: 0.95, speed: 1.08, cadence: 0.9, teamwork: 0.85, holdRange: 0.84, retreat: 0.7, strafe: 1.02, ricochet: 0.85 },
+        { id: 'duelist', label: 'Duelist', aggression: 1.0, awareness: 1.08, accuracy: 1.08, speed: 1.0, cadence: 0.95, teamwork: 1.0, holdRange: 0.96, retreat: 0.9, strafe: 1.1, ricochet: 1.05 },
+        { id: 'tactician', label: 'Tactician', aggression: 0.95, awareness: 1.15, accuracy: 1.05, speed: 1.02, cadence: 1.0, teamwork: 1.2, holdRange: 1.08, retreat: 1.1, strafe: 1.05, ricochet: 1.3 }
+    ],
+    green: [
+        { id: 'sentinel', label: 'Sentinel', aggression: 0.78, awareness: 1.16, accuracy: 1.1, speed: 0.94, cadence: 1.05, teamwork: 1.2, holdRange: 1.2, retreat: 1.25, strafe: 0.82, ricochet: 1.15 },
+        { id: 'enforcer', label: 'Enforcer', aggression: 1.28, awareness: 1.05, accuracy: 1.0, speed: 1.04, cadence: 0.86, teamwork: 0.94, holdRange: 0.86, retreat: 0.72, strafe: 0.9, ricochet: 0.85 },
+        { id: 'sniper', label: 'Sniper', aggression: 0.92, awareness: 1.2, accuracy: 1.2, speed: 0.9, cadence: 1.08, teamwork: 1.1, holdRange: 1.28, retreat: 1.15, strafe: 0.9, ricochet: 1.4 }
+    ]
+};
+
+function pickEnemyPersonality(type) {
+    const pool = PERSONALITY_PROFILES[type] || PERSONALITY_PROFILES.brown;
+    return pool[Math.floor(Math.random() * pool.length)] || PERSONALITY_PROFILES.brown[1];
+}
+
+function pickEnemyPersonalityById(type, personalityId) {
+    const pool = PERSONALITY_PROFILES[type] || PERSONALITY_PROFILES.brown;
+    const direct = pool.find(p => p.id === personalityId);
+    return direct || pickEnemyPersonality(type);
+}
+
+function getDifficultyLabel(level) {
+    return (DIFFICULTY_PRESETS[level] || DIFFICULTY_PRESETS.veteran).label;
+}
+
+function getDifficultyIntel(level) {
+    if (level === 'casual') return 'Casual profile: enemies react slower, miss more, and coordinate less.';
+    if (level === 'nightmare') return 'Nightmare profile: enemies react fast, coordinate aggressively, and use advanced shot setups.';
+    return 'Veteran profile: balanced reaction, coordination, and pressure.';
+}
 
 // ======================= INITIALIZATION =======================
 function init() {
@@ -641,6 +1657,7 @@ function init() {
 
     // Input
     setupInput();
+    preloadAlternateTank();
     window.addEventListener('resize', onResize);
 
     animate();
@@ -664,6 +1681,10 @@ function setupInput() {
             const modes = ['FIRST-PERSON', 'THIRD-PERSON', 'TOP-DOWN'];
             showNotification('CAMERA: ' + modes[G.cameraMode]);
         }
+        if (G.missionActive && !G.paused && /^[1-5]$/.test(e.key)) {
+            e.preventDefault();
+            activatePowerupByKey(e.key);
+        }
     });
     document.addEventListener('keyup', e => { G.keys[e.key.toLowerCase()] = false; });
 
@@ -676,6 +1697,17 @@ function setupInput() {
     });
 
     document.addEventListener('mousedown', e => {
+        if (G.airstrikeAim) {
+            e.preventDefault();
+            if (e.button === 0) {
+                tryDeployAirstrike(e.clientX, e.clientY);
+            } else if (e.button === 2) {
+                showNotification('AIR BOMB TARGETING CANCELED');
+                exitAirstrikeAim(false);
+            }
+            return;
+        }
+
         // Initialize sounds on first interaction
         if (!G.soundsReady) {
             initSounds();
@@ -692,6 +1724,10 @@ function setupInput() {
     document.addEventListener('pointerlockchange', () => {
         G.pointerLocked = document.pointerLockElement === G.renderer.domElement;
     });
+
+    document.addEventListener('contextmenu', e => {
+        if (G.airstrikeAim) e.preventDefault();
+    });
 }
 
 function onResize() {
@@ -701,6 +1737,74 @@ function onResize() {
 }
 
 // ======================= MENU =======================
+function preloadAlternateTank() {
+    const hint = document.getElementById('tankLoadHint');
+    if (!window.AlternateTankLoader) {
+        hint.textContent = 'Imported model: loader unavailable';
+        G.altTankLoadError = 'loader-unavailable';
+        return;
+    }
+
+    hint.textContent = 'Imported model: loading...';
+    window.AlternateTankLoader.load()
+        .then(() => {
+            G.altTankReady = true;
+            G.altTankLoadError = '';
+            hint.textContent = 'Imported model: ready';
+        })
+        .catch((err) => {
+            G.altTankReady = false;
+            G.altTankLoadError = err ? String(err.message || err) : 'load-failed';
+            hint.textContent = 'Imported model: failed to load (using classic)';
+        });
+}
+
+function selectTankVariant(variant) {
+    G.playerTankVariant = variant === 'imported' ? 'imported' : 'classic';
+
+    const classicBtn = document.getElementById('tankClassicBtn');
+    const importedBtn = document.getElementById('tankImportedBtn');
+    classicBtn.classList.toggle('selected', G.playerTankVariant === 'classic');
+    importedBtn.classList.toggle('selected', G.playerTankVariant === 'imported');
+
+    const hint = document.getElementById('tankLoadHint');
+    if (G.playerTankVariant === 'imported') {
+        if (G.altTankReady) hint.textContent = 'Imported model: ready';
+        else if (G.altTankLoadError) hint.textContent = 'Imported model: failed to load (using classic)';
+        else hint.textContent = 'Imported model: loading...';
+    }
+}
+
+function selectDifficulty(level) {
+    const nextLevel = DIFFICULTY_PRESETS[level] ? level : 'veteran';
+    G.difficulty = nextLevel;
+
+    const casualBtn = document.getElementById('difficultyCasualBtn');
+    const veteranBtn = document.getElementById('difficultyVeteranBtn');
+    const nightmareBtn = document.getElementById('difficultyNightmareBtn');
+    casualBtn.classList.toggle('selected', nextLevel === 'casual');
+    veteranBtn.classList.toggle('selected', nextLevel === 'veteran');
+    nightmareBtn.classList.toggle('selected', nextLevel === 'nightmare');
+
+    const hint = document.getElementById('difficultyHint');
+    hint.textContent = getDifficultyIntel(nextLevel);
+}
+
+function showEnemyPersonalitySummary() {
+    if (!G.enemies.length) return;
+    const counts = {};
+    G.enemies.forEach(enemy => {
+        const key = enemy.personalityLabel || 'Steady';
+        counts[key] = (counts[key] || 0) + 1;
+    });
+    const summary = Object.keys(counts)
+        .sort((a, b) => counts[b] - counts[a])
+        .slice(0, 3)
+        .map(k => counts[k] + ' ' + k)
+        .join(' | ');
+    showNotification('ENEMY PROFILES: ' + summary);
+}
+
 function showMissions() {
     document.getElementById('missionSelect').style.display = 'block';
 }
@@ -713,12 +1817,14 @@ function startMission(num) {
 function startMissionFromBriefing() {
     const num = G.pendingMission;
     document.getElementById('briefingScreen').style.display = 'none';
+    G.currentDifficulty = G.difficulty;
     
     G.currentMission = num;
     G.missionKills = 0;
     G.missionActive = true;
     G.missionComplete = false;
     G.missionFailed = false;
+    G.objectiveStatusLine = '';
     G.paused = false;
     G.started = true;
     G.hull = 100;
@@ -733,6 +1839,8 @@ function startMissionFromBriefing() {
     G.explosions = [];
     G.particles = [];
     G.enemies = [];
+    G.objectiveState = null;
+    resetPowerupState();
     G.mouse.x = 0;
     G.mouse.y = 0;
 
@@ -743,8 +1851,15 @@ function startMissionFromBriefing() {
     createFloor();
     createWalls(num - 1);
     createBattlefieldProps();
+
+    const importedSelected = G.playerTankVariant === 'imported';
+    const importedAvailable = importedSelected && G.altTankReady;
+    G.activeTankVariant = importedAvailable ? 'imported' : 'classic';
+
     createPlayerTank();
-    spawnEnemies(num - 1);
+    setupMissionObjective(num);
+    spawnMissionEnemies(num - 1);
+    spawnInitialPowerups();
 
     const maze = MAZES[num - 1];
     G.playerPos.set(maze.spawn.x, 0, maze.spawn.z);
@@ -752,7 +1867,12 @@ function startMissionFromBriefing() {
     G.turretAngle = Math.PI;
     G.playerSpeed = 0;
 
-    G.missionTargets = maze.enemies.length;
+    const objectiveCfg = getMissionObjectiveConfig(num);
+    if (objectiveCfg.type === 'survive_waves' && G.objectiveState && G.objectiveState.totalTargets) {
+        G.missionTargets = G.objectiveState.totalTargets;
+    } else {
+        G.missionTargets = Math.max(1, G.enemies.length);
+    }
 
     // Show HUD
     document.getElementById('menuScreen').style.display = 'none';
@@ -764,7 +1884,14 @@ function startMissionFromBriefing() {
     G.cameraMode = 0;
 
     updateMissionText();
-    showNotification('MISSION ' + num + ' - START!');
+    showNotification('MISSION ' + num + ' - ' + getMissionObjectiveLabel());
+    setTimeout(() => showNotification('DIFFICULTY: ' + getDifficultyLabel(G.currentDifficulty)), 700);
+    if (importedSelected && !importedAvailable) {
+        setTimeout(() => showNotification('IMPORTED TANK NOT READY - CLASSIC DEPLOYED'), 750);
+    } else if (importedAvailable) {
+        setTimeout(() => showNotification('IMPORTED TANK DEPLOYED'), 750);
+    }
+    setTimeout(() => showEnemyPersonalitySummary(), 1400);
 
     // Lock pointer
     G.renderer.domElement.requestPointerLock();
@@ -774,6 +1901,7 @@ function backToMenu() {
     G.missionActive = false;
     G.started = false;
     G.paused = false;
+    exitAirstrikeAim(true);
     document.getElementById('menuScreen').style.display = 'flex';
     document.getElementById('endScreen').style.display = 'none';
     document.getElementById('pauseMenu').style.display = 'none';
@@ -781,6 +1909,7 @@ function backToMenu() {
     document.getElementById('dashboard').style.display = 'none';
     document.getElementById('controlsHelp').style.display = 'none';
     document.getElementById('cameraMode').style.display = 'none';
+    document.getElementById('powerupInventory').style.display = 'none';
     document.getElementById('missionSelect').style.display = 'none';
     if (document.pointerLockElement) document.exitPointerLock();
     // Stop engine sound
@@ -790,7 +1919,9 @@ function backToMenu() {
 function pauseGame() {
     G.paused = true;
     G.missionActive = false;
+    if (G.airstrikeAim) exitAirstrikeAim(true);
     document.getElementById('pauseMenu').style.display = 'flex';
+    document.getElementById('powerupInventory').style.display = 'none';
     if (document.pointerLockElement) document.exitPointerLock();
     // Stop engine sound
     if (engineSound && engineSound.playing()) engineSound.pause();
@@ -819,39 +1950,40 @@ function showBriefing(num) {
         {
             title: 'MISSION 1: SCOUTING',
             subtitle: 'Training Yard',
-            objective: 'Destroy all enemy tanks in the training yard',
-            enemies: '3 Brown Tanks (Light Armor, Patrol AI)',
-            intel: 'Entry-level opposition. Use this mission to familiarize yourself with controls and weapons systems. Brown tanks have basic patrol patterns and slow reaction times.'
+            objective: 'Rescue convoy: escort at least 2 trucks to extraction point.',
+            enemies: '3 Brown Tanks (Light Patrol Units)',
+            intel: 'Convoy route runs along the west corridor. Enemy units will ambush slow trucks if not screened.'
         },
         {
             title: 'MISSION 2: COUNTERATTACK',
             subtitle: 'Urban Maze',
-            objective: 'Eliminate all hostile forces in the urban sector',
-            enemies: '3 Brown Tanks, 2 Grey Scout Tanks (Fast, Chase AI)',
-            intel: 'Expect mixed resistance. Grey scout tanks are faster and more aggressive - they will pursue you relentlessly. Use the maze walls for cover and tactical positioning.'
+            objective: 'Defend base: hold command post integrity until timer expires.',
+            enemies: 'Mixed light/scout units plus reinforcement squads',
+            intel: 'Hostiles focus pressure around the central command post. Reinforcements arrive if defense appears stable.'
         },
         {
             title: 'MISSION 3: FORTRESS',
             subtitle: 'Enemy Stronghold',
-            objective: 'Breach enemy defenses and destroy all defenders',
-            enemies: '2 Brown Tanks, 2 Grey Scouts, 2 Green Heavy Tanks (Armored, Guard AI)',
-            intel: 'Heavy opposition detected. Green tanks have triple armor plating and will hold defensive positions. Multiple hits required. Recommend using mines and ricocheting shells.'
+            objective: 'Survive waves: clear every incoming assault wave.',
+            enemies: '3 sequential waves with mixed compositions',
+            intel: 'Use intermission windows to reload and reposition. Final wave includes multiple armored threats.'
         },
         {
             title: 'MISSION 4: TOTAL WAR',
             subtitle: 'Full Combat Zone',
-            objective: 'Achieve total dominance - destroy all enemy armor',
-            enemies: '3 Brown Tanks, 2 Grey Scouts, 3 Green Heavy Tanks',
-            intel: 'Maximum threat level. All enemy types present in force. The maze offers both opportunities and dangers. Watch your six - enemies will attempt flanking maneuvers. Victory here proves your mastery.'
+            objective: 'Boss duel: destroy the enemy ace heavy tank.',
+            enemies: 'IRON TITAN (Elite Heavy Tank, Extreme Armor)',
+            intel: 'The ace tank pushes aggressively and withstands sustained fire. Use walls to break line-of-sight and punish over-rotation.'
         }
     ];
     
     const brief = briefings[num - 1];
+    const difficultyLabel = getDifficultyLabel(G.difficulty);
     document.getElementById('briefingTitle').textContent = brief.title;
-    document.getElementById('briefingSubtitle').textContent = brief.subtitle;
+    document.getElementById('briefingSubtitle').textContent = brief.subtitle + ' - ' + difficultyLabel;
     document.getElementById('briefingObjective').textContent = brief.objective;
     document.getElementById('briefingEnemies').textContent = brief.enemies;
-    document.getElementById('briefingIntel').textContent = brief.intel;
+    document.getElementById('briefingIntel').textContent = brief.intel + ' ' + getDifficultyIntel(G.difficulty);
     
     document.getElementById('menuScreen').style.display = 'none';
     document.getElementById('briefingScreen').style.display = 'flex';
@@ -1262,6 +2394,34 @@ function createWalls(mazeIdx) {
 function createPlayerTank() {
     G.playerTank = new THREE.Group();
 
+    // Imported player tank variant (GLB)
+    if (G.activeTankVariant === 'imported' && window.AlternateTankLoader && window.AlternateTankLoader.isLoaded) {
+        const importedTank = window.AlternateTankLoader.createInstance();
+        if (importedTank) {
+            G.playerBody = importedTank;
+            G.playerTank.add(importedTank);
+
+            // Keep a lightweight turret anchor so existing aiming/camera logic still works.
+            G.playerTurret = new THREE.Group();
+            G.playerTurret.position.y = 1.1;
+
+            const turretAnchor = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.12, 0.08, 8),
+                new THREE.MeshStandardMaterial({ color: 0x99cc66, emissive: 0x224411, emissiveIntensity: 0.25 })
+            );
+            turretAnchor.castShadow = true;
+            G.playerTurret.add(turretAnchor);
+
+            G.playerBarrel = new THREE.Object3D();
+            G.playerBarrel.position.set(0, 0, -1.1);
+            G.playerTurret.add(G.playerBarrel);
+
+            G.playerTank.add(G.playerTurret);
+            G.scene.add(G.playerTank);
+            return;
+        }
+    }
+
     // -- Tank body (olive green toy tank) --
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a6b35, roughness: 0.5, metalness: 0.2 });
     const bodyGeo = new THREE.BoxGeometry(2.2, 0.8, 3.2);
@@ -1378,36 +2538,84 @@ function updateCamera() {
     }
 }
 // ======================= ENEMY TANKS =======================
-function spawnEnemies(mazeIdx) {
+function spawnEnemies(mazeIdx, enemyEntriesOverride) {
     const maze = MAZES[mazeIdx];
-    maze.enemies.forEach(e => {
+    const enemyEntries = enemyEntriesOverride || maze.enemies;
+    const difficulty = DIFFICULTY_PRESETS[G.currentDifficulty] || DIFFICULTY_PRESETS.veteran;
+    enemyEntries.forEach(e => {
         const type = TANK_TYPES[e.type];
+        const personality = e.personality ? pickEnemyPersonalityById(e.type, e.personality) : pickEnemyPersonality(e.type);
+        const baseSkill = e.type === 'green' ? 0.84 : (e.type === 'grey' ? 0.7 : 0.52);
+        const skill = Math.max(0.35, Math.min(0.99, baseSkill * difficulty.skillMul * personality.accuracy + (e.skillBonus || 0)));
+        const preferredRange = (type.ai === 'chase' ? 7 : (e.type === 'green' ? 11 : 13)) * personality.holdRange;
         const enemy = createEnemyTank(e.type);
         enemy.position.set(e.x, 0, e.z);
+
+        const health = e.health || Math.max(1, Math.round(type.health * (e.healthMul || 1)));
 
         const data = {
             mesh: enemy, type: e.type,
             x: e.x, z: e.z,
+            uid: ++G.enemyUidCounter,
             angle: Math.random() * Math.PI * 2,
             turretAngle: Math.random() * Math.PI * 2,
-            speed: type.speed,
-            turnSpeed: type.turnSpeed,
-            fireRate: type.fireRate,
-            health: type.health,
-            maxHealth: type.health,
-            shellSpeed: type.shellSpeed,
+            speed: type.speed * difficulty.speedMul * personality.speed * (e.speedMul || 1),
+            turnSpeed: type.turnSpeed * difficulty.turnMul * Math.max(0.85, personality.speed) * (e.turnMul || 1),
+            fireRate: type.fireRate * difficulty.fireRateMul * (e.fireRateMul || 1),
+            health: health,
+            maxHealth: health,
+            shellSpeed: type.shellSpeed * difficulty.shellSpeedMul * (e.shellSpeedMul || 1),
             ai: type.ai,
+            skill: skill,
+            preferredRange: preferredRange,
+            difficultyReaction: difficulty.reactionMul,
+            difficultyAccuracy: difficulty.accuracyMul,
+            difficultyTeamwork: difficulty.teamworkMul,
+            difficultyAggression: difficulty.aggressionMul,
+            difficultyRicochet: difficulty.ricochetMul,
+            difficultyFireRate: difficulty.fireRateMul,
+            personalityId: personality.id,
+            personalityLabel: personality.label,
+            personalityAggression: personality.aggression,
+            personalityAwareness: personality.awareness,
+            personalityAccuracy: personality.accuracy,
+            personalityCadence: personality.cadence,
+            personalityTeamwork: personality.teamwork,
+            personalityRetreat: personality.retreat,
+            personalityStrafe: personality.strafe,
+            personalityRicochet: personality.ricochet,
+            isBoss: !!e.isBoss,
             fireCooldown: 2 + Math.random() * 3,
+            empTimer: 0,
             aiTimer: 0,
             aiState: 'idle',
             patrolTarget: null,
             alive: true,
             moveDir: 1,
             stuckTimer: 0,
+            strafeDir: Math.random() > 0.5 ? 1 : -1,
+            strafeTimer: 0,
+            flankBias: Math.random() > 0.5 ? 1 : -1,
+            alertTimer: 0,
+            lastSeenPos: null,
+            lastSeenTimer: 0,
+            ricochetPlan: null,
+            ricochetPlanTimer: 0,
+            ricochetCheckTimer: Math.random() * 0.8,
             lastX: e.x, lastZ: e.z,
             seesPlayer: false,
             turretGroup: enemy.children.find(c => c.isTurretGroup)
         };
+
+        if (data.isBoss) {
+            enemy.scale.setScalar(1.2);
+            data.preferredRange = 9;
+            data.personalityAggression = 1.2;
+            data.personalityAccuracy = 1.08;
+            data.personalityRetreat = 0.75;
+            data.difficultyAggression = Math.max(1.12, data.difficultyAggression);
+            showNotification('BOSS CONTACT: IRON TITAN');
+        }
 
         G.enemies.push(data);
         G.scene.add(enemy);
@@ -1484,7 +2692,8 @@ function createEnemyTank(typeName) {
 function fireShell() {
     if (G.shellCooldown > 0 || G.shells <= 0 || G.shellReloadTime > 0) return;
     G.shells--;
-    G.shellCooldown = 0.5;
+    const overdriveMul = G.playerEffects.overdriveTimer > 0 ? 1.55 : 1;
+    G.shellCooldown = 0.5 / overdriveMul;
     
     // Play fire sound
     if (SOUNDS) SOUNDS.fire();
@@ -1723,6 +2932,42 @@ function updateShells(dt) {
                     break;
                 }
             }
+
+            // Enemy shell hitting convoy targets
+            if (!bounced && G.objectiveType === 'rescue_convoy' && G.objectiveState && G.objectiveState.convoy) {
+                for (const unit of G.objectiveState.convoy) {
+                    if (!unit.alive || unit.arrived) continue;
+                    const cdist = Math.sqrt((shell.x - unit.x) ** 2 + (shell.z - unit.z) ** 2);
+                    if (cdist < 1.35) {
+                        unit.health -= 22;
+                        createExplosion(shell.x, 0.7, shell.z, 2.2);
+                        G.scene.remove(shell.mesh);
+                        G.activeShells.splice(i, 1);
+                        bounced = true;
+                        if (unit.health <= 0) {
+                            unit.alive = false;
+                            createExplosion(unit.x, 0.6, unit.z, 3.2);
+                            G.scene.remove(unit.mesh);
+                            showNotification('CONVOY UNIT DESTROYED');
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Enemy shell hitting command base
+            if (!bounced && G.objectiveType === 'defend_base' && G.objectiveState && G.objectiveState.base) {
+                const baseX = G.objectiveState.base.position.x;
+                const baseZ = G.objectiveState.base.position.z;
+                const bdist = Math.sqrt((shell.x - baseX) ** 2 + (shell.z - baseZ) ** 2);
+                if (bdist < 3.0) {
+                    G.objectiveState.health = Math.max(0, G.objectiveState.health - 16);
+                    createExplosion(shell.x, 0.7, shell.z, 2.4);
+                    G.scene.remove(shell.mesh);
+                    G.activeShells.splice(i, 1);
+                    bounced = true;
+                }
+            }
         }
         if (bounced) continue;
 
@@ -1737,9 +2982,16 @@ function updateShells(dt) {
 function updateMissionText() {
     const el = document.getElementById('missionText');
     const sub = document.getElementById('missionSub');
-    el.textContent = 'MISSION ' + G.currentMission;
-    const remaining = G.missionTargets - G.missionKills;
-    sub.textContent = remaining > 0 ? remaining + ' TANK' + (remaining > 1 ? 'S' : '') + ' REMAINING' : 'ALL TARGETS ELIMINATED';
+    const objectiveLabel = getMissionObjectiveLabel();
+    el.textContent = 'MISSION ' + G.currentMission + ' - ' + objectiveLabel;
+
+    if (G.objectiveStatusLine) {
+        sub.textContent = G.objectiveStatusLine;
+        return;
+    }
+
+    const remaining = Math.max(0, G.missionTargets - G.missionKills);
+    sub.textContent = remaining > 0 ? remaining + ' HOSTILES REMAINING' : 'OBJECTIVE COMPLETE';
 }
 
 function updateHUD() {
@@ -1761,13 +3013,17 @@ function updateHUD() {
     document.getElementById('hullFill').style.width = G.hull + '%';
     document.getElementById('hullFill').style.background =
         G.hull > 60 ? '#44ff44' : (G.hull > 30 ? '#ffaa44' : '#ff4444');
-    document.getElementById('hullText').textContent = 'HULL INTEGRITY ' + Math.round(G.hull) + '%';
+    const overdriveTag = G.playerEffects.overdriveTimer > 0 ? ' | OVRDRV' : '';
+    const shieldTag = G.playerEffects.shieldTimer > 0 ? ' | SHIELD' : '';
+    document.getElementById('hullText').textContent = 'HULL INTEGRITY ' + Math.round(G.hull) + '%' + overdriveTag + shieldTag;
     document.getElementById('speedVal').textContent = Math.abs(Math.round(G.playerSpeed));
     document.getElementById('killsVal').textContent = G.missionKills;
 
     // Camera mode indicator
     const modes = ['FIRST-PERSON', 'THIRD-PERSON', 'TOP-DOWN'];
-    document.getElementById('cameraMode').textContent = 'CAMERA: ' + modes[G.cameraMode];
+    let camText = 'CAMERA: ' + modes[G.cameraMode];
+    if (G.airstrikeAim) camText += ' | AIR BOMB TARGETING';
+    document.getElementById('cameraMode').textContent = camText;
 
     // Heading
     const deg = ((G.playerAngle * 180 / Math.PI) % 360 + 360) % 360;
@@ -1826,6 +3082,28 @@ function updateMiniMap() {
         ctx.fill();
     });
 
+    // Draw powerups
+    G.powerupPickups.forEach(pickup => {
+        const def = POWERUP_TYPES[pickup.typeId];
+        const col = def ? def.color : 0xffffff;
+        const rr = (col >> 16) & 255;
+        const gg = (col >> 8) & 255;
+        const bb = col & 255;
+        ctx.fillStyle = 'rgba(' + rr + ',' + gg + ',' + bb + ',0.95)';
+        ctx.beginPath();
+        ctx.arc(pickup.x / scale + cw/2, pickup.z / scale + ch/2, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Draw air bomb target markers
+    G.activeAirBombs.forEach(bomb => {
+        ctx.strokeStyle = '#ff6644';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(bomb.x / scale + cw/2, bomb.z / scale + ch/2, 5.5, 0, Math.PI * 2);
+        ctx.stroke();
+    });
+
     // Draw enemies
     G.enemies.forEach(enemy => {
         if (!enemy.alive) return;
@@ -1879,13 +3157,46 @@ function showNotification(msg) {
 
 // ======================= MISSION STATUS =======================
 function checkMissionStatus() {
-    if (G.missionKills >= G.missionTargets && !G.missionComplete) {
-        G.missionComplete = true;
-        G.missionActive = false;
-        // Play victory sound
-        if (SOUNDS) SOUNDS.victory();
-        setTimeout(() => showEndScreen(true), 1500);
-        showNotification('MISSION COMPLETE!');
+    if (G.missionComplete || G.missionFailed) return;
+
+    if (G.objectiveType === 'rescue_convoy') {
+        const state = G.objectiveState;
+        if (state && state.arrivedCount >= state.minSurvivors) {
+            completeMission('CONVOY EXTRACTED');
+        }
+        return;
+    }
+
+    if (G.objectiveType === 'defend_base') {
+        const state = G.objectiveState;
+        if (state && state.timer <= 0) {
+            completeMission('BASE DEFENDED');
+        }
+        if (state && state.health <= 0) {
+            failMission('BASE DESTROYED');
+        }
+        return;
+    }
+
+    if (G.objectiveType === 'survive_waves') {
+        const state = G.objectiveState;
+        const aliveEnemies = G.enemies.filter(e => e.alive).length;
+        if (state && state.phase === 'done' && aliveEnemies === 0) {
+            completeMission('ALL WAVES SURVIVED');
+        }
+        return;
+    }
+
+    if (G.objectiveType === 'boss_duel') {
+        const aliveBoss = G.enemies.some(e => e.alive && e.isBoss);
+        if (!aliveBoss) {
+            completeMission('BOSS ELIMINATED');
+        }
+        return;
+    }
+
+    if (G.missionKills >= G.missionTargets) {
+        completeMission('MISSION COMPLETE!');
     }
 }
 
@@ -1897,12 +3208,12 @@ function showEndScreen(victory) {
         title.textContent = 'MISSION COMPLETE';
         title.style.color = '#6aaa40';
         title.style.textShadow = '0 0 30px #4a8a30';
-        stats.textContent = 'Tanks Destroyed: ' + G.missionKills + ' | Hull: ' + Math.round(G.hull) + '%';
+        stats.textContent = getMissionObjectiveLabel() + ' | Tanks Destroyed: ' + G.missionKills + ' | Hull: ' + Math.round(G.hull) + '%';
     } else {
-        title.textContent = 'DESTROYED';
+        title.textContent = 'MISSION FAILED';
         title.style.color = '#ff4444';
         title.style.textShadow = '0 0 30px #ff0000';
-        stats.textContent = 'Tanks Destroyed: ' + G.missionKills + ' / ' + G.missionTargets;
+        stats.textContent = getMissionObjectiveLabel() + ' | Tanks Destroyed: ' + G.missionKills + ' / ' + G.missionTargets;
     }
     if (document.pointerLockElement) document.exitPointerLock();
 }
@@ -1917,6 +3228,8 @@ function animate() {
         updatePlayer(dt);
         updateShells(dt);
         updateEnemies(dt);
+        updatePowerupSystem(dt);
+        updateMissionObjectives(dt);
         updateMines(dt);
         updateExplosions(dt);
         updateParticles(dt);
@@ -1943,21 +3256,25 @@ function updatePlayer(dt) {
     if (G.keys['d']) turnInput = -1;
 
     // Turn the tank body
+    const overdriveMoveMul = G.playerEffects.overdriveTimer > 0 ? 1.42 : 1;
+    const effectiveTurnSpeed = G.turnSpeed * (G.playerEffects.overdriveTimer > 0 ? 1.16 : 1);
+
     if (moveInput !== 0) {
-        G.playerAngle += turnInput * G.turnSpeed * dt;
+        G.playerAngle += turnInput * effectiveTurnSpeed * dt;
     } else {
         // Allow turning in place but slower
-        G.playerAngle += turnInput * G.turnSpeed * 0.6 * dt;
+        G.playerAngle += turnInput * effectiveTurnSpeed * 0.6 * dt;
     }
 
     // Acceleration / deceleration
-    const targetSpeed = moveInput * G.maxSpeed;
+    const effectiveMaxSpeed = G.maxSpeed * overdriveMoveMul;
+    const targetSpeed = moveInput * effectiveMaxSpeed;
     G.playerSpeed += (targetSpeed - G.playerSpeed) * dt * 4;
     if (Math.abs(G.playerSpeed) < 0.1) G.playerSpeed = 0;
     
     // Engine sound (adjust volume based on speed)
     if (engineSound) {
-        const targetVolume = Math.abs(G.playerSpeed) / G.maxSpeed * 0.15;
+        const targetVolume = Math.abs(G.playerSpeed) / Math.max(0.1, effectiveMaxSpeed) * 0.15;
         const currentVolume = engineSound.volume();
         engineSound.volume(currentVolume + (targetVolume - currentVolume) * 0.1);
         
@@ -2035,116 +3352,342 @@ function updatePlayer(dt) {
     }
 }
 // ======================= ENEMY AI =======================
+function clampNum(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function getPlayerVelocity() {
+    return {
+        x: -Math.sin(G.playerAngle) * G.playerSpeed,
+        z: -Math.cos(G.playerAngle) * G.playerSpeed
+    };
+}
+
+function choosePatrolTarget(enemy, radius) {
+    for (let i = 0; i < 8; i++) {
+        const tx = clampNum(enemy.x + (Math.random() - 0.5) * radius * 2, -36, 36);
+        const tz = clampNum(enemy.z + (Math.random() - 0.5) * radius * 2, -36, 36);
+        if (!enemyCollides(tx, tz, enemy)) return { x: tx, z: tz };
+    }
+    return { x: enemy.x, z: enemy.z };
+}
+
+function sharePlayerIntel(sourceEnemy, px, pz) {
+    for (const ally of G.enemies) {
+        if (!ally.alive || ally === sourceEnemy) continue;
+        const dx = ally.x - sourceEnemy.x;
+        const dz = ally.z - sourceEnemy.z;
+        if (Math.sqrt(dx * dx + dz * dz) > 30) continue;
+        ally.alertTimer = Math.max(ally.alertTimer, 2.6 + sourceEnemy.skill);
+        ally.lastSeenPos = { x: px, z: pz };
+        ally.lastSeenTimer = Math.max(ally.lastSeenTimer, 2.0);
+    }
+}
+
+function computeLeadAngle(enemy, targetX, targetZ, targetVx, targetVz) {
+    const dx = targetX - enemy.x;
+    const dz = targetZ - enemy.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    const travelTime = distance / Math.max(8, enemy.shellSpeed);
+    const leadFactor = 0.65 + enemy.skill * 0.25;
+    const px = targetX + targetVx * travelTime * leadFactor;
+    const pz = targetZ + targetVz * travelTime * leadFactor;
+    return Math.atan2(-(px - enemy.x), -(pz - enemy.z));
+}
+
+function moveEnemyToTarget(enemy, targetX, targetZ, dt, speedScale) {
+    const dx = targetX - enemy.x;
+    const dz = targetZ - enemy.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist < 0.85) return true;
+
+    const desiredAngle = Math.atan2(-dx, -dz);
+    const angleDiff = normalizeAngle(desiredAngle - enemy.angle);
+    const turnRate = enemy.turnSpeed * (0.8 + speedScale * 0.5);
+    enemy.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate * dt);
+
+    const alignment = clampNum(1 - Math.abs(angleDiff) / 1.7, 0.2, 1);
+    const moveSpeed = enemy.speed * speedScale * alignment * dt;
+    const vx = -Math.sin(enemy.angle) * moveSpeed;
+    const vz = -Math.cos(enemy.angle) * moveSpeed;
+
+    const newX = enemy.x + vx;
+    const newZ = enemy.z + vz;
+    if (!enemyCollides(newX, newZ, enemy)) {
+        enemy.x = newX;
+        enemy.z = newZ;
+        enemy.stuckTimer = Math.max(0, enemy.stuckTimer - dt * 0.8);
+        return false;
+    }
+
+    // Slide attempts mimic human wall-hugging behavior.
+    if (!enemyCollides(enemy.x + vx, enemy.z, enemy)) {
+        enemy.x += vx;
+        enemy.stuckTimer += dt * 0.5;
+        return false;
+    }
+    if (!enemyCollides(enemy.x, enemy.z + vz, enemy)) {
+        enemy.z += vz;
+        enemy.stuckTimer += dt * 0.5;
+        return false;
+    }
+
+    const side = enemy.flankBias;
+    const svx = Math.cos(enemy.angle) * moveSpeed * side;
+    const svz = -Math.sin(enemy.angle) * moveSpeed * side;
+    if (!enemyCollides(enemy.x + svx, enemy.z + svz, enemy)) {
+        enemy.x += svx;
+        enemy.z += svz;
+        enemy.stuckTimer += dt * 0.4;
+        return false;
+    }
+
+    enemy.stuckTimer += dt;
+    return false;
+}
+
+function planRicochetShot(enemy, targetX, targetZ, targetVx, targetVz) {
+    if (G.maxBounces < 1) return null;
+
+    const dx = targetX - enemy.x;
+    const dz = targetZ - enemy.z;
+    const baseDist = Math.sqrt(dx * dx + dz * dz);
+    if (baseDist < 8 || baseDist > 44) return null;
+
+    const leadTime = baseDist / Math.max(8, enemy.shellSpeed);
+    const futureX = targetX + targetVx * leadTime * 0.55;
+    const futureZ = targetZ + targetVz * leadTime * 0.55;
+
+    let best = null;
+
+    for (const wall of G.walls) {
+        const wallW = wall.maxX - wall.minX;
+        const wallD = wall.maxZ - wall.minZ;
+        if (wallW < 0.8 || wallD < 0.8) continue;
+
+        const faces = [
+            { axis: 'x', c: wall.minX, min: wall.minZ, max: wall.maxZ },
+            { axis: 'x', c: wall.maxX, min: wall.minZ, max: wall.maxZ },
+            { axis: 'z', c: wall.minZ, min: wall.minX, max: wall.maxX },
+            { axis: 'z', c: wall.maxZ, min: wall.minX, max: wall.maxX }
+        ];
+
+        for (const face of faces) {
+            const mirroredX = face.axis === 'x' ? (2 * face.c - futureX) : futureX;
+            const mirroredZ = face.axis === 'z' ? (2 * face.c - futureZ) : futureZ;
+
+            const dirX = mirroredX - enemy.x;
+            const dirZ = mirroredZ - enemy.z;
+            const dirLen = Math.sqrt(dirX * dirX + dirZ * dirZ);
+            if (dirLen < 0.001) continue;
+
+            const nx = dirX / dirLen;
+            const nz = dirZ / dirLen;
+
+            let t = 0;
+            if (face.axis === 'x') {
+                if (Math.abs(nx) < 0.001) continue;
+                t = (face.c - enemy.x) / nx;
+            } else {
+                if (Math.abs(nz) < 0.001) continue;
+                t = (face.c - enemy.z) / nz;
+            }
+            if (t <= 0.3) continue;
+
+            const hitX = enemy.x + nx * t;
+            const hitZ = enemy.z + nz * t;
+
+            if (face.axis === 'x') {
+                if (hitZ < face.min + 0.15 || hitZ > face.max - 0.15) continue;
+            } else {
+                if (hitX < face.min + 0.15 || hitX > face.max - 0.15) continue;
+            }
+
+            const toHit = Math.sqrt((hitX - enemy.x) ** 2 + (hitZ - enemy.z) ** 2);
+            const toTarget = Math.sqrt((futureX - hitX) ** 2 + (futureZ - hitZ) ** 2);
+            if (toHit < 1.5 || toTarget < 1.5 || toHit + toTarget > 60) continue;
+
+            if (!hasLineOfSight(enemy.x, enemy.z, hitX, hitZ, wall)) continue;
+            if (!hasLineOfSight(hitX, hitZ, futureX, futureZ, wall)) continue;
+
+            const shotAngle = Math.atan2(-nx, -nz);
+            const angleCost = Math.abs(normalizeAngle(shotAngle - enemy.turretAngle)) * 3;
+            const score = toHit + toTarget + angleCost;
+
+            if (!best || score < best.score) {
+                best = { angle: shotAngle, score };
+            }
+        }
+    }
+
+    return best;
+}
+
 function updateEnemies(dt) {
+    const playerVel = getPlayerVelocity();
+
     G.enemies.forEach(enemy => {
         if (!enemy.alive) return;
 
-        // Line of sight check
-        enemy.seesPlayer = hasLineOfSight(enemy.x, enemy.z, G.playerPos.x, G.playerPos.z);
+        enemy.empTimer = Math.max(0, (enemy.empTimer || 0) - dt);
+        const empFactor = enemy.empTimer > 0 ? 0.38 : 1;
+
         const dxP = G.playerPos.x - enemy.x;
         const dzP = G.playerPos.z - enemy.z;
         const distToPlayer = Math.sqrt(dxP * dxP + dzP * dzP);
-        const angleToPlayer = Math.atan2(-dxP, -dzP);
+        const toPlayerAngle = Math.atan2(-dxP, -dzP);
 
-        // Turret AI: aim at player if visible
+        enemy.fireCooldown -= dt;
+        enemy.aiTimer -= dt * enemy.difficultyReaction * enemy.personalityAwareness * empFactor;
+        enemy.alertTimer = Math.max(0, enemy.alertTimer - dt);
+        enemy.lastSeenTimer = Math.max(0, enemy.lastSeenTimer - dt);
+        enemy.strafeTimer -= dt;
+        enemy.ricochetCheckTimer -= dt;
+        enemy.ricochetPlanTimer = Math.max(0, enemy.ricochetPlanTimer - dt);
+
+        enemy.seesPlayer = hasLineOfSight(enemy.x, enemy.z, G.playerPos.x, G.playerPos.z);
         if (enemy.seesPlayer) {
-            const angleDiff = normalizeAngle(angleToPlayer - enemy.turretAngle);
-            enemy.turretAngle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 2.5 * dt);
-
-            // Fire if aimed close enough
-            enemy.fireCooldown -= dt;
-            if (enemy.fireCooldown <= 0 && Math.abs(angleDiff) < 0.2) {
-                fireEnemyShell(enemy);
-                enemy.fireCooldown = enemy.fireRate + Math.random() * 1.0;
+            enemy.lastSeenPos = { x: G.playerPos.x, z: G.playerPos.z };
+            enemy.lastSeenTimer = 2.4;
+            enemy.alertTimer = Math.max(enemy.alertTimer, (3.0 + enemy.skill) * enemy.personalityAwareness);
+            if (Math.random() < 0.92 * enemy.personalityTeamwork * enemy.difficultyTeamwork) {
+                sharePlayerIntel(enemy, G.playerPos.x, G.playerPos.z);
             }
         }
 
-        // Movement AI
-        enemy.aiTimer -= dt;
-        if (enemy.aiTimer <= 0) {
-            enemy.aiTimer = 1.5 + Math.random() * 2;
+        // Tactical planning interval.
+        if (enemy.aiTimer <= 0 || !enemy.patrolTarget) {
+            if (enemy.strafeTimer <= 0) {
+                enemy.strafeDir = Math.random() > 0.5 ? 1 : -1;
+                enemy.strafeTimer = (0.7 + Math.random() * 1.0) / Math.max(0.65, enemy.personalityStrafe);
+            }
 
-            if (enemy.ai === 'patrol') {
-                // Patrol: pick random nearby point
+            const ux = dxP / Math.max(0.001, distToPlayer);
+            const uz = dzP / Math.max(0.001, distToPlayer);
+            const px = -uz;
+            const pz = ux;
+            const retreatThreshold = Math.max(1, Math.floor(enemy.maxHealth * (0.28 + 0.1 * enemy.personalityRetreat)));
+            const lowHealth = enemy.health <= retreatThreshold;
+
+            if (enemy.seesPlayer) {
+                enemy.ricochetPlan = null;
+                const range = enemy.preferredRange || (enemy.ai === 'chase' ? 8 : 11);
+                const aggression = enemy.personalityAggression * enemy.difficultyAggression;
+                const retreatDistance = 12 + (1.45 - aggression) * 4;
+
+                if (lowHealth && distToPlayer < retreatDistance) {
+                    enemy.aiState = 'retreat';
+                    enemy.patrolTarget = {
+                        x: clampNum(enemy.x - ux * (6 + Math.random() * 3) + px * enemy.flankBias * 2.5, -36, 36),
+                        z: clampNum(enemy.z - uz * (6 + Math.random() * 3) + pz * enemy.flankBias * 2.5, -36, 36)
+                    };
+                    enemy.aiTimer = 0.55 + Math.random() * 0.45;
+                } else if (distToPlayer > range + (2.5 - aggression * 1.2)) {
+                    enemy.aiState = 'advance';
+                    enemy.patrolTarget = {
+                        x: clampNum(G.playerPos.x - ux * (range - 1) + px * enemy.flankBias * 2.8, -36, 36),
+                        z: clampNum(G.playerPos.z - uz * (range - 1) + pz * enemy.flankBias * 2.8, -36, 36)
+                    };
+                    enemy.aiTimer = 0.45 + Math.random() * 0.35;
+                } else if (distToPlayer < range - (1.8 + (aggression - 1) * 0.6)) {
+                    enemy.aiState = 'spacing';
+                    enemy.patrolTarget = {
+                        x: clampNum(enemy.x - ux * 4 + px * enemy.strafeDir * 2.2, -36, 36),
+                        z: clampNum(enemy.z - uz * 4 + pz * enemy.strafeDir * 2.2, -36, 36)
+                    };
+                    enemy.aiTimer = 0.4 + Math.random() * 0.35;
+                } else {
+                    enemy.aiState = 'strafe';
+                    enemy.patrolTarget = {
+                        x: clampNum(enemy.x + px * enemy.strafeDir * (3.5 + Math.random() * 1.2), -36, 36),
+                        z: clampNum(enemy.z + pz * enemy.strafeDir * (3.5 + Math.random() * 1.2), -36, 36)
+                    };
+                    enemy.aiTimer = 0.35 + Math.random() * 0.3;
+                }
+            } else if (enemy.alertTimer > 0 && enemy.lastSeenPos) {
+                enemy.aiState = 'investigate';
                 enemy.patrolTarget = {
-                    x: enemy.x + (Math.random() - 0.5) * 20,
-                    z: enemy.z + (Math.random() - 0.5) * 20
+                    x: clampNum(enemy.lastSeenPos.x + enemy.flankBias * (1.5 + Math.random() * 2.5), -36, 36),
+                    z: clampNum(enemy.lastSeenPos.z + enemy.strafeDir * (1.5 + Math.random() * 2.5), -36, 36)
                 };
-                enemy.aiState = 'moving';
-            } else if (enemy.ai === 'chase') {
-                // Chase: move toward player if visible
-                if (enemy.seesPlayer && distToPlayer > 8) {
-                    enemy.patrolTarget = {
-                        x: G.playerPos.x + (Math.random() - 0.5) * 6,
-                        z: G.playerPos.z + (Math.random() - 0.5) * 6
-                    };
-                    enemy.aiState = 'moving';
-                } else {
-                    enemy.patrolTarget = {
-                        x: enemy.x + (Math.random() - 0.5) * 15,
-                        z: enemy.z + (Math.random() - 0.5) * 15
-                    };
-                    enemy.aiState = 'moving';
-                }
-            } else if (enemy.ai === 'guard') {
-                // Guard: stay mostly stationary, slight repositioning
-                if (enemy.seesPlayer && distToPlayer < 6) {
-                    // Back away
-                    enemy.patrolTarget = {
-                        x: enemy.x - dxP * 0.3,
-                        z: enemy.z - dzP * 0.3
-                    };
-                    enemy.aiState = 'moving';
-                } else if (Math.random() > 0.6) {
-                    enemy.patrolTarget = {
-                        x: enemy.x + (Math.random() - 0.5) * 8,
-                        z: enemy.z + (Math.random() - 0.5) * 8
-                    };
-                    enemy.aiState = 'moving';
-                } else {
-                    enemy.aiState = 'idle';
-                }
+                enemy.aiTimer = 0.8 + Math.random() * 0.6;
+            } else {
+                enemy.aiState = 'patrol';
+                const patrolRadius = enemy.ai === 'guard' ? 8 : (enemy.ai === 'chase' ? 11 : 14);
+                enemy.patrolTarget = choosePatrolTarget(enemy, patrolRadius);
+                enemy.aiTimer = 1.1 + Math.random() * 1.2;
             }
         }
 
-        // Movement execution
-        if (enemy.aiState === 'moving' && enemy.patrolTarget) {
-            const tdx = enemy.patrolTarget.x - enemy.x;
-            const tdz = enemy.patrolTarget.z - enemy.z;
-            const dist = Math.sqrt(tdx * tdx + tdz * tdz);
-
-            if (dist < 1.5) {
-                enemy.aiState = 'idle';
-            } else {
-                const targetAngle = Math.atan2(-tdx, -tdz);
-                const angleDiff = normalizeAngle(targetAngle - enemy.angle);
-                enemy.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), enemy.turnSpeed * dt);
-
-                // Move forward
-                const moveSpeed = enemy.speed * dt;
-                const mx = -Math.sin(enemy.angle) * moveSpeed;
-                const mz = -Math.cos(enemy.angle) * moveSpeed;
-
-                const newX = enemy.x + mx;
-                const newZ = enemy.z + mz;
-
-                // Collision
-                if (!enemyCollides(newX, newZ, enemy)) {
-                    enemy.x = newX;
-                    enemy.z = newZ;
-                    enemy.stuckTimer = 0;
-                } else {
-                    enemy.stuckTimer += dt;
-                    if (enemy.stuckTimer > 1) {
-                        // Pick new random target
-                        enemy.patrolTarget = {
-                            x: enemy.x + (Math.random() - 0.5) * 10,
-                            z: enemy.z + (Math.random() - 0.5) * 10
-                        };
-                        enemy.stuckTimer = 0;
-                    }
+        // Opportunistic ricochet shots for stronger enemies when direct LOS is blocked.
+        if (!enemy.seesPlayer && enemy.alertTimer > 0 && enemy.skill > 0.58 && enemy.ricochetCheckTimer <= 0) {
+            enemy.ricochetCheckTimer = 0.6 + Math.random() * 0.7;
+            if (Math.random() < enemy.skill * 0.45 * enemy.personalityRicochet * enemy.difficultyRicochet) {
+                const plan = planRicochetShot(enemy, G.playerPos.x, G.playerPos.z, playerVel.x, playerVel.z);
+                if (plan) {
+                    enemy.ricochetPlan = plan;
+                    enemy.ricochetPlanTimer = 1.2 + Math.random() * 0.8;
                 }
             }
+        }
+        if (enemy.ricochetPlanTimer <= 0) enemy.ricochetPlan = null;
+
+        // Turret control and firing decision.
+        let desiredTurretAngle = enemy.turretAngle;
+        let canFire = false;
+        const effectiveSkill = clampNum(enemy.skill * enemy.difficultyAccuracy * enemy.personalityAccuracy, 0.25, 0.99);
+
+        if (enemy.seesPlayer) {
+            const leadAngle = computeLeadAngle(enemy, G.playerPos.x, G.playerPos.z, playerVel.x, playerVel.z);
+            const jitter = (1 - effectiveSkill) * (0.08 + Math.min(0.12, distToPlayer * 0.004));
+            desiredTurretAngle = leadAngle + (Math.random() - 0.5) * jitter;
+            canFire = true;
+        } else if (enemy.ricochetPlan) {
+            desiredTurretAngle = enemy.ricochetPlan.angle;
+            canFire = true;
+        } else if (enemy.lastSeenPos) {
+            desiredTurretAngle = Math.atan2(-(enemy.lastSeenPos.x - enemy.x), -(enemy.lastSeenPos.z - enemy.z));
+        } else {
+            desiredTurretAngle = toPlayerAngle;
+        }
+
+        const turretDiff = normalizeAngle(desiredTurretAngle - enemy.turretAngle);
+        const turretTurnRate = (1.7 + effectiveSkill * 2.6) * dt * enemy.difficultyReaction * enemy.personalityAwareness * empFactor;
+        enemy.turretAngle += Math.sign(turretDiff) * Math.min(Math.abs(turretDiff), turretTurnRate);
+
+        const finalAimDiff = Math.abs(normalizeAngle(desiredTurretAngle - enemy.turretAngle));
+        const aimTolerance = 0.22 - effectiveSkill * 0.1;
+        const inFireRange = distToPlayer < 38;
+        if (enemy.fireCooldown <= 0 && enemy.empTimer <= 0.05 && canFire && finalAimDiff < aimTolerance && inFireRange) {
+            fireEnemyShell(enemy);
+            const cadenceScale = enemy.ai === 'chase' ? 0.85 : (enemy.ai === 'guard' ? 0.95 : 1.1);
+            const skillScale = 1.12 - effectiveSkill * 0.28;
+            enemy.fireCooldown = Math.max(0.45, enemy.fireRate * cadenceScale * skillScale * enemy.personalityCadence + Math.random() * 0.55);
+            enemy.ricochetPlan = null;
+            enemy.ricochetPlanTimer = 0;
+        }
+
+        // Movement execution.
+        if (enemy.patrolTarget) {
+            let speedScale = 1.0;
+            if (enemy.aiState === 'retreat') speedScale = 1.05 + (1.4 - enemy.personalityAggression) * 0.18;
+            else if (enemy.aiState === 'patrol') speedScale = 0.82;
+            else if (enemy.aiState === 'investigate') speedScale = 0.92;
+            else if (enemy.aiState === 'strafe') speedScale = 0.95 + (enemy.personalityStrafe - 1) * 0.3;
+
+            speedScale *= 0.9 + enemy.personalityAggression * 0.12;
+            speedScale *= empFactor;
+
+            moveEnemyToTarget(enemy, enemy.patrolTarget.x, enemy.patrolTarget.z, dt, speedScale);
+        }
+
+        // Unstick logic with quick reroute.
+        if (enemy.stuckTimer > 0.95 / Math.max(0.7, enemy.difficultyReaction)) {
+            enemy.flankBias *= -1;
+            enemy.strafeDir *= -1;
+            enemy.patrolTarget = choosePatrolTarget(enemy, 9);
+            enemy.aiTimer = 0.3 + Math.random() * 0.4;
+            enemy.stuckTimer = 0;
         }
 
         // Update mesh position
@@ -2188,17 +3731,19 @@ function enemyCollides(x, z, self) {
     return false;
 }
 
-function hasLineOfSight(x1, z1, x2, z2) {
+function hasLineOfSight(x1, z1, x2, z2, ignoredWall) {
     // Raycast through walls
-    const steps = 20;
+    const dist = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+    const steps = Math.max(10, Math.ceil(dist / 1.1));
     const dx = (x2 - x1) / steps;
     const dz = (z2 - z1) / steps;
     for (let i = 1; i < steps; i++) {
         const cx = x1 + dx * i;
         const cz = z1 + dz * i;
         for (const wall of G.walls) {
-            if (cx > wall.minX && cx < wall.maxX &&
-                cz > wall.minZ && cz < wall.maxZ) {
+            if (wall === ignoredWall) continue;
+            if (cx > wall.minX + 0.02 && cx < wall.maxX - 0.02 &&
+                cz > wall.minZ + 0.02 && cz < wall.maxZ - 0.02) {
                 return false;
             }
         }
@@ -2248,9 +3793,13 @@ function damageEnemy(enemy, amount) {
         createExplosion(enemy.x, 1, enemy.z, 4);
         G.scene.remove(enemy.mesh);
         G.missionKills++;
-        addKillFeed(enemy.type.toUpperCase() + ' TANK DESTROYED');
+        if (enemy.isBoss) addKillFeed('IRON TITAN DESTROYED');
+        else addKillFeed(enemy.type.toUpperCase() + ' TANK DESTROYED');
         updateMissionText();
     } else {
+        if (enemy.isBoss) {
+            showNotification('IRON TITAN HULL: ' + enemy.health + ' / ' + enemy.maxHealth);
+        }
         // Flash the enemy red briefly
         enemy.mesh.children.forEach(c => {
             if (c.material && c.material.color) {
@@ -2284,16 +3833,14 @@ function damageEnemy(enemy, amount) {
 }
 
 function damagePlayer(amount) {
-    G.hull -= amount;
+    const shieldFactor = G.playerEffects.shieldTimer > 0 ? 0.45 : 1;
+    const effectiveDamage = amount * shieldFactor;
+    G.hull -= effectiveDamage;
     // Play hit sound
     if (SOUNDS) SOUNDS.hit();
     if (G.hull <= 0) {
         G.hull = 0;
-        G.missionFailed = true;
-        G.missionActive = false;
-        // Play defeat sound
-        if (SOUNDS) SOUNDS.defeat();
-        showEndScreen(false);
+        failMission('TANK DESTROYED');
     }
     // Red flash overlay
     const overlay = document.getElementById('damageOverlay');
