@@ -1,1 +1,19 @@
-Game.html
+# Ignore everything
+/*
+
+# But don't ignore these core files
+!/.gitignore
+!/README.md
+
+# Keep the homepage and related images
+!/index.html
+!/Gun.png
+!/Jet.png
+!/House.png
+!/Tank.png
+
+# Keep the 4 main games
+!/AirsoftRoyale/
+!/FighterJetGame/
+!/HouseFight/
+!/Tanks/

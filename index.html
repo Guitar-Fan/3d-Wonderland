@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Wonderland</title>
+    <!-- Bouncy, fun mobile-game style font -->
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            /* Full, deep gradient for the base coloring */
+            background: radial-gradient(circle at top center, #d88038 0%, #a2521c 40%, #4a210f 100%);
+            font-family: 'Nunito', sans-serif;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: 50px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 10px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-family: 'Lilita One', cursive;
+            font-size: 5rem;
+            line-height: 1.1;
+            /* Sky blue gradient text */
+            background: linear-gradient(to bottom, #a7e4f8 0%, #4cb8d8 50%, #2087a8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            /* Layered text shadows for extreme depth */
+            filter: drop-shadow(0px 8px 0px #0e4c63) drop-shadow(0px 15px 15px rgba(0,0,0,0.6));
+            letter-spacing: 2px;
+            transform: rotate(-2deg);
+        }
+
+        .subtitle {
+            font-family: 'Lilita One', cursive;
+            font-size: 1.8rem;
+            color: #d1ff99;
+            text-shadow: 0px 4px 0px #315c12, 0px 8px 10px rgba(0,0,0,0.5);
+            margin-top: -10px;
+            transform: rotate(1deg);
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 columns on desktop */
+            gap: 15px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 10px 20px;
+            height: 100%;
+        }
+
+        .game-card {
+            /* Dark green base for cards to complement the orange/brown background */
+            background: linear-gradient(135deg, #1b3d2f 0%, #0d2119 100%);
+            border: 4px solid #a7e4f8;
+            border-radius: 20px;
+            /* Massive deep shadow for the "mobile game" chunky UI feel */
+            box-shadow: 0 10px 0 #07120e, inset 0 6px 0 rgba(255, 255, 255, 0.1), 0 15px 15px rgba(0,0,0,0.5);
+            padding: 10px;
+            text-align: center;
+            position: relative;
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 0; /* allows shrinking */
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 0 #07120e, inset 0 6px 0 rgba(255, 255, 255, 0.1), 0 20px 20px rgba(0,0,0,0.6);
+        }
+
+        .game-card:active {
+            transform: translateY(3px);
+            box-shadow: 0 7px 0 #07120e, inset 0 6px 0 rgba(255, 255, 255, 0.1), 0 10px 10px rgba(0,0,0,0.5);
+        }
+
+        .image-container {
+            width: 100%;
+            height: clamp(80px, 20vh, 150px);
+            border-radius: 15px;
+            background: radial-gradient(circle at center, #235c44 0%, #102a1e 100%);
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.1);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #1f4a38;
+            overflow: hidden;
+        }
+
+        .image-container img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            filter: drop-shadow(0px 10px 5px rgba(0,0,0,0.5));
+            transition: transform 0.3s ease;
+        }
+
+        .game-card:hover .image-container img {
+            transform: scale(1.1) translateY(-5px);
+        }
+
+        .game-title {
+            font-family: 'Lilita One', cursive;
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            color: #fed98f;
+            text-shadow: 0 3px 0 #934c11, 0 5px 5px rgba(0,0,0,0.5);
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .game-bio {
+            font-size: clamp(0.75rem, 2vw, 0.95rem);
+            line-height: 1.2;
+            color: #dcedea;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .play-btn {
+            display: inline-block;
+            text-decoration: none;
+            font-family: 'Lilita One', cursive;
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            color: white;
+            /* Chunky orange button */
+            background: linear-gradient(to bottom, #f39c12 0%, #d35400 100%);
+            padding: 8px 15px;
+            border-radius: 12px;
+            box-shadow: 0 5px 0 #8e3600, inset 0 3px 0 rgba(255,255,255,0.3), 0 8px 10px rgba(0,0,0,0.5);
+            transition: all 0.1s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 0 rgba(0,0,0,0.3);
+            border: 2px solid #ffcc66;
+        }
+
+        .play-btn:hover {
+            filter: brightness(1.1);
+            transform: scale(1.02);
+        }
+
+        .play-btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 0px 0 #8e3600, inset 0 3px 0 rgba(255,255,255,0.3), 0 3px 5px rgba(0,0,0,0.5);
+        }
+
+        /* Fun responsive tweaks */
+        @media(max-width: 900px) {
+            h1 { font-size: clamp(2.5rem, 8vw, 4rem); }
+            .header { padding: 15px 5px; margin-bottom: 5px; }
+            .subtitle { font-size: clamp(1rem, 4vw, 1.5rem); }
+            .games-grid { 
+                grid-template-columns: repeat(2, 1fr); /* 2x2 grid on mobile/tablets */
+                gap: 10px;
+                padding: 5px 10px;
+            }
+            body { padding-bottom: 10px; min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>3D Wonderland</h1>
+        <div class="subtitle">Read Instructions Pls!</div>
+    </div>
+
+    <div class="games-grid">
+        
+        <!-- Airsoft Royale -->
+        <div class="game-card">
+            <div class="image-container"><img src="Gun.png" alt="Airsoft Royale"></div>
+            <h2 class="game-title">Airsoft Royale</h2>
+            <p class="game-bio">Drop into the ultimate backyard shootout! Grab cover, dodge incoming plastic, and style on your friends in this frantic shoot-out.</p>
+            <a href="AirsoftRoyale/AirsoftRoyale.html" class="play-btn">Play Now</a>
+        </div>
+
+        <!-- Fighter Jet Game -->
+        <div class="game-card">
+            <div class="image-container"><img src="Jet.png" alt="SHADOW STRIKE"></div>
+            <h2 class="game-title">SHADOW STRIKE</h2>
+            <p class="game-bio">Streak across the sky at breakneck speeds! Barrel roll through danger and lock on to victory in high-altitude dogfights.</p>
+            <a href="FighterJetGame/FighterJetGame.html" class="play-btn">Play Now</a>
+        </div>
+
+        <!-- House Fight -->
+        <div class="game-card">
+            <div class="image-container"><img src="House.png" alt="House Fighter 3D"></div>
+            <h2 class="game-title">House Fighter 3D</h2>
+            <p class="game-bio">Turn an ordinary living room into an absolute battleground. Bunk down behind couches and unleash domestic destruction!</p>
+            <a href="HouseFight/HouseFight.html" class="play-btn">Play Now</a>
+        </div>
+
+        <!-- Tanks -->
+        <div class="game-card">
+            <div class="image-container"><img src="Tank.png" alt="IRON MAZE"></div>
+            <h2 class="game-title">IRON MAZE</h2>
+            <p class="game-bio">Command a heavy tank and blast richocheting shells to defeat enemy tanks. Crush obstacles, angle your armor, and land the perfect explosive shot.</p>
+            <a href="Tanks/Tanks.html" class="play-btn">Play Now</a>
+        </div>
+
+    </div>
+
+</body>
+</html>
