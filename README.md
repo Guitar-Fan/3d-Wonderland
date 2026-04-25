@@ -1,20 +1,18 @@
 # 3D Wonderland 🎢
 
-Welcome to **3D Wonderland**, a collection of realistic web-based 3D games I threw together! These games test the limit of three.js library to make cool games on websites.
+This repo contains a collection of realistic combat web-based 3D games I made using three.js․ My goal for this project is to make seriously cool 3d games that can be played on browser, as well testing how far I can take the 3d capabilities of web languages. The environment assets were carefully chosen to give off an appropriate vibe. The hardest game to make was the Fighter Jet Game by far. In SHADOW STRIKE, I coded customized projectile motion physics to sync the missiles speed with enemy jets, and played around with the timing to give a moderate difficulty experience.
 
-Just open `3d-wonderland.pages.dev` to check out the game hub, or load them up individually:
+Demo Link: `3d-wonderland․pages․dev`
 
 ### 🔫 Airsoft Royale
-A chaotic backyard airsoft shootout. Grab cover behind obstacles, dodge incoming plastic, and try to outlast your friends in this frantic skirmish. Play it at `AirsoftRoyale/AirsoftRoyale.html`.
+A shooting game that required agile dodges and movement through a maze of indoor walls, inspired by the recreational game, Airsoft. Respawn infinitely to shoot as many enemies with 6 types of guns. Additional gameplay features are: Jump, reload, flashbang, grenades, scan for enemies.
 
-### ✈️ SHADOW STRIKE
-Streak across the sky at breakneck speeds! Barrel roll through danger and lock on to victory in high-altitude dogfights against enemy jets. Hit the skies in `FighterJetGame/FighterJetGame.html`.
+### ✈️‌ SHADOW STRIKE (Fighter Jet Simulator)
+A three.js fighter jet combat simulator game where the player navigates an abandoned, ruined city and executes tactical missions against various aerial and ground threats. Use standard jet flight controls such as pitch, roll, yaw, and throttle (controls were simplified to be intuitive for all players) to navigate missions in he jet and shoot missiles with a custom gameplay mechanism that stops time and makes aiming missiles accurately easier.
 
 ### 🛋️ House Fighter 3D
-Turn an ordinary living room into an absolute battleground. Bunk down behind sofas and unleash your inner domestic destruction! Jump in at `HouseFight/HouseFight.html`.
+Fight intruders in your own customized home, where you can modify the interior design of the house by adding furniture, rooms, walls, and throwable objects. Defeats waves of intruders by punching, kicking or throwing objects (recommended). There is also a gun feature.
 
 ### 🛡️ IRON MAZE
-Command heavy armor and blast your way to glory in tank combat. Crush obstacles, angle your armor to bounce shells, and land the perfect explosive shot. Start the engines in `Tanks/Tanks.html`.
+3D tank combat simulator inspired by the Wii Play Tanks mini-game. It is an upgraded 3d web version of Wii Play Tanks. Navigate through a maze of wooden walls and shoot richocheting shells to collapse enemy tanks. Also lay mines that detonate after a certain duration.
 
----
-*Built with Three.js and a whole lot of fun. Have a blast!*
